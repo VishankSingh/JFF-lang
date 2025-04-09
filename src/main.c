@@ -14,7 +14,7 @@
 
 
 int main(void) {
-    char *filename = "/home/vis/Desk/codes/compilers_1/part_2/examples/e1.tac";
+    char *filename = "/home/vis/Desk/codes/compilers_1/part_2/examples/e1.jff";
     lexer_t *lexer = init_lexer(filename);
     if (!lexer) {
         fprintf(stderr, "Failed to initialize lexer\n");
