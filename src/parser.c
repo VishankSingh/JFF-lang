@@ -5,6 +5,8 @@
  */
 #include "include/parser.h"
 
+#include "include/ast.h"
+
 parser_t *init_parser(lexer_t *lexer) {
     parser_t *parser = malloc(sizeof(parser_t));
     if (!parser) {
@@ -17,6 +19,7 @@ parser_t *init_parser(lexer_t *lexer) {
     parser->lexer = lexer;
     parser->current = lexer->tokens[0];
     parser->previous = lexer->tokens[0];
+    parser->ast = init_ast();
     return parser;
 }
 
@@ -105,6 +108,7 @@ void parser_parse_function_decl(parser_t *parser) {
 void parser_parse_param_list(parser_t *parser) {
     parser_parse_param(parser);
     while (parser_match(parser, TOKEN_COMMA)) {
+        parser_advance(parser);
         parser_parse_param(parser);
     }
 }
@@ -190,7 +194,9 @@ void parser_parse_if_statement(parser_t *parser) {
         parser_parse_statement(parser);
     }
     parser_expect_advance(parser, TOKEN_RBRACE);
-    if (parser_match(parser, TOKEN_ELIF)) {
+
+
+    while (parser_match(parser, TOKEN_ELIF)) {
         parser_expect_advance(parser, TOKEN_ELIF);
         parser_expect_advance(parser, TOKEN_LPAREN);
         parser_parse_expression(parser);
@@ -200,7 +206,8 @@ void parser_parse_if_statement(parser_t *parser) {
             parser_parse_statement(parser);
         }
         parser_expect_advance(parser, TOKEN_RBRACE);
-    } else if (parser_match(parser, TOKEN_ELSE)) {
+    }
+    if (parser_match(parser, TOKEN_ELSE)) {
         parser_expect_advance(parser, TOKEN_ELSE);
         parser_expect_advance(parser, TOKEN_LBRACE);
         while (parser->current && parser->current->type != TOKEN_RBRACE) {
@@ -244,10 +251,16 @@ void parser_parse_for_statement(parser_t *parser) {
 }
 
 void parser_parse_while_statement(parser_t *parser) {
-    
+    parser_expect_advance(parser, TOKEN_WHILE);
+    parser_expect_advance(parser, TOKEN_LPAREN);
+    parser_parse_expression(parser);
+    parser_expect_advance(parser, TOKEN_RPAREN);
+    parser_expect_advance(parser, TOKEN_LBRACE);
+    while (parser->current && parser->current->type != TOKEN_RBRACE) {
+        parser_parse_statement(parser);
+    }
+    parser_expect_advance(parser, TOKEN_RBRACE);
 }
-
-
 
 void parser_parse_print_statement(parser_t *parser) {
     parser_expect_advance(parser, TOKEN_PRINT);

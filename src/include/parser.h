@@ -13,6 +13,7 @@
 #include <stdbool.h>
 
 #include "lexer.h"
+#include "ast.h"
 
 typedef struct PARSER_STRUCT {
     token_t **tokens;
@@ -21,6 +22,7 @@ typedef struct PARSER_STRUCT {
     lexer_t *lexer;
     token_t *current;
     token_t *previous;
+    ast_t *ast;
 } parser_t;
 
 parser_t *init_parser(lexer_t *lexer);
