@@ -28,8 +28,8 @@ int main(void) {
     lexer_apend_token(lexer, token);
     // print_token(token);
 
-    token_t** tokens = lexer->tokens;
     
+    // token_t** tokens = lexer->tokens;
     // for(size_t i = 0; i < lexer->token_count; i++) {
     //     print_token(tokens[i]);
     // }
@@ -41,6 +41,15 @@ int main(void) {
         return 1;
     }
     parser_parse_program(parser);
+
+    ast_node_t *first_node = parser->ast->nodes[0];
+    if (first_node) {
+        printf("First node type: %d\n", first_node->type);
+        printf("First node line: %zu\n", first_node->line);
+        printf("First node column: %zu\n", first_node->column);
+    } else {
+        printf("No nodes in AST\n");
+    }
     
     free_lexer(lexer);
     return 0;

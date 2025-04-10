@@ -38,7 +38,7 @@ void parser_expect_advance(parser_t *parser, token_type_t type);
 void parser_expect(parser_t *parser, token_type_t type);
 
 void parser_parse_program(parser_t *parser);
-void parser_parse_declaration(parser_t *parser);
+ast_node_t *parser_parse_declaration(parser_t *parser);
 void parser_parse_function_decl(parser_t *parser);
 void parser_parse_param_list(parser_t *parser);
 void parser_parse_param(parser_t *parser);

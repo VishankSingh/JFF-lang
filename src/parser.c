@@ -20,6 +20,8 @@ parser_t *init_parser(lexer_t *lexer) {
     parser->current = lexer->tokens[0];
     parser->previous = lexer->tokens[0];
     parser->ast = init_ast();
+    parser->ast->nodes_capacity = 8;
+    parser->ast->nodes = malloc(parser->ast->nodes_capacity * sizeof(ast_node_t *));
     return parser;
 }
 
@@ -70,22 +72,51 @@ void parser_expect(parser_t *parser, token_type_t type) {
 
 void parser_parse_program(parser_t *parser) {
     while (parser->current && parser->current->type != TOKEN_EOF) {
-        parser_parse_declaration(parser);
+        ast_node_t *node = parser_parse_declaration(parser);
+        if (node) {
+            // if (!parser->ast->nodes) {
+            //     parser->ast->nodes_capacity = 8; // Initial capacity
+            //     parser->ast->nodes = malloc(parser->ast->nodes_capacity * sizeof(ast_node_t *));
+            //     if (!parser->ast->nodes) {
+            //         fprintf(stderr, "Failed to allocate memory for AST nodes\n");
+            //         exit(EXIT_FAILURE);
+            //     }
+            // }
+            if (parser->ast->node_count >= parser->ast->nodes_capacity) {
+                parser->ast->nodes_capacity *= 2;
+                ast_node_t **new_nodes = realloc(parser->ast->nodes, parser->ast->nodes_capacity * sizeof(ast_node_t *));
+                if (!new_nodes) {
+                    fprintf(stderr, "Failed to reallocate memory for AST nodes\n");
+                    exit(EXIT_FAILURE);
+                }
+                parser->ast->nodes = new_nodes;
+            }
+            parser->ast->nodes[parser->ast->node_count++] = node;
+        }
     }
 }
 
-void parser_parse_declaration(parser_t *parser) {
+ast_node_t *parser_parse_declaration(parser_t *parser) {
     if (parser_match(parser, TOKEN_FUNC)) {
         parser_parse_function_decl(parser);
     } else if (parser_match(parser, TOKEN_IDENTIFIER)) {
         parser_parse_var_decl(parser);
         parser_expect_advance(parser, TOKEN_SEMICOLON);
     } else if (parser_match(parser, TOKEN_EOF)) {
-        return;
+        return NULL;
     } else {
         fprintf(stderr, "Expected function or variable declaration but got %s\n", parser->current->value);
         exit(EXIT_FAILURE);
     }
+    ast_node_t *test_node = init_ast_node(AST_NODE_TYPE_DECL, parser->current->line, parser->current->column);
+    test_node->data.decl_node.type = DECL_GLOBAL_VAR;
+    test_node->data.decl_node.data.global_var_decl.name = "test";
+    test_node->data.decl_node.data.global_var_decl.type = AST_DATA_TYPE_INT;
+    ast_expr_node_t *expr_node = init_expr_literal_int(10, parser->current->line, parser->current->column);
+    test_node->data.decl_node.data.global_var_decl.initializer = expr_node;
+    test_node->line = parser->current->line;
+    test_node->column = parser->current->column;
+    return test_node;
 }
 
 void parser_parse_function_decl(parser_t *parser) {
