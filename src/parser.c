@@ -4,15 +4,12 @@
  * Github: https://github.com/VishankSingh
  */
 #include "include/parser.h"
-
 #include "include/ast.h"
+#include "include/utils.h"
 
 parser_t *init_parser(lexer_t *lexer) {
     parser_t *parser = malloc(sizeof(parser_t));
-    if (!parser) {
-        fprintf(stderr, "Failed to allocate memory for parser\n");
-        return NULL;
-    }
+    CHECK_MEM_ALLOC_ERROR(parser);
     parser->tokens = lexer->tokens;
     parser->token_count = lexer->token_count;
     parser->current_index = 0;
@@ -20,15 +17,12 @@ parser_t *init_parser(lexer_t *lexer) {
     parser->current = lexer->tokens[0];
     parser->previous = lexer->tokens[0];
     parser->ast = init_ast();
-    parser->ast->nodes_capacity = 8;
-    parser->ast->nodes = malloc(parser->ast->nodes_capacity * sizeof(ast_node_t *));
     return parser;
 }
 
 void free_parser(parser_t *parser) {
-    if (parser) {
-        free(parser);
-    }
+    free_ast(parser->ast);
+    free(parser);
 }
 
 void parser_advance(parser_t *parser) {
@@ -38,7 +32,6 @@ void parser_advance(parser_t *parser) {
     } else {
         parser->current = NULL;
     }
-    // printf("%s\n", parser->previous->value);
 }
 
 bool parser_match(parser_t *parser, token_type_t type) {
@@ -74,21 +67,10 @@ void parser_parse_program(parser_t *parser) {
     while (parser->current && parser->current->type != TOKEN_EOF) {
         ast_node_t *node = parser_parse_declaration(parser);
         if (node) {
-            // if (!parser->ast->nodes) {
-            //     parser->ast->nodes_capacity = 8; // Initial capacity
-            //     parser->ast->nodes = malloc(parser->ast->nodes_capacity * sizeof(ast_node_t *));
-            //     if (!parser->ast->nodes) {
-            //         fprintf(stderr, "Failed to allocate memory for AST nodes\n");
-            //         exit(EXIT_FAILURE);
-            //     }
-            // }
             if (parser->ast->node_count >= parser->ast->nodes_capacity) {
                 parser->ast->nodes_capacity *= 2;
                 ast_node_t **new_nodes = realloc(parser->ast->nodes, parser->ast->nodes_capacity * sizeof(ast_node_t *));
-                if (!new_nodes) {
-                    fprintf(stderr, "Failed to reallocate memory for AST nodes\n");
-                    exit(EXIT_FAILURE);
-                }
+                CHECK_MEM_ALLOC_ERROR(new_nodes);
                 parser->ast->nodes = new_nodes;
             }
             parser->ast->nodes[parser->ast->node_count++] = node;
@@ -99,24 +81,22 @@ void parser_parse_program(parser_t *parser) {
 ast_node_t *parser_parse_declaration(parser_t *parser) {
     if (parser_match(parser, TOKEN_FUNC)) {
         parser_parse_function_decl(parser);
+        ast_node_t *test_node = init_ast_node(AST_NODE_CATEGORY_DECL, parser->current->line, parser->current->column);
+        test_node->data.decl_node = init_decl_function("test", DATA_TYPE_INT, NULL, 0, NULL, 0, parser->current->line, parser->current->column);
+        return test_node;
     } else if (parser_match(parser, TOKEN_IDENTIFIER)) {
-        parser_parse_var_decl(parser);
+        ast_node_t *decl_node = init_ast_node(AST_NODE_CATEGORY_STMT, parser->current->line, parser->current->column);
+        ast_stmt_node_t *stmt_node = parser_parse_var_decl(parser);
+        decl_node->data.stmt_node = stmt_node;
         parser_expect_advance(parser, TOKEN_SEMICOLON);
+        return decl_node;
     } else if (parser_match(parser, TOKEN_EOF)) {
         return NULL;
     } else {
         fprintf(stderr, "Expected function or variable declaration but got %s\n", parser->current->value);
         exit(EXIT_FAILURE);
     }
-    ast_node_t *test_node = init_ast_node(AST_NODE_TYPE_DECL, parser->current->line, parser->current->column);
-    test_node->data.decl_node.type = DECL_GLOBAL_VAR;
-    test_node->data.decl_node.data.global_var_decl.name = "test";
-    test_node->data.decl_node.data.global_var_decl.type = AST_DATA_TYPE_INT;
-    ast_expr_node_t *expr_node = init_expr_literal_int(10, parser->current->line, parser->current->column);
-    test_node->data.decl_node.data.global_var_decl.initializer = expr_node;
-    test_node->line = parser->current->line;
-    test_node->column = parser->current->column;
-    return test_node;
+
 }
 
 void parser_parse_function_decl(parser_t *parser) {
@@ -150,34 +130,48 @@ void parser_parse_param(parser_t *parser) {
     parser_parse_type(parser);
 }
 
-void parser_parse_type(parser_t *parser) {
+data_type_t parser_parse_type(parser_t *parser) {
     switch (parser->current->type) {
         case TOKEN_TYPE_INT:
+            parser_advance(parser);
+            return DATA_TYPE_INT;
         case TOKEN_TYPE_FLOAT:
+            parser_advance(parser);
+            return DATA_TYPE_FLOAT;
         case TOKEN_TYPE_STRING:
+            parser_advance(parser);
+            return DATA_TYPE_STRING;
         case TOKEN_TYPE_BOOL:
+            parser_advance(parser);
+            return DATA_TYPE_BOOL;
         case TOKEN_TYPE_VOID:
             parser_advance(parser);
-            break;
+            return DATA_TYPE_VOID;
         default:
             fprintf(stderr, "Expected type, got %d\n", parser->current->type);
             exit(1);
     }
 }
 
-void parser_parse_var_decl(parser_t *parser) {
+ast_stmt_node_t *parser_parse_var_decl(parser_t *parser) {
+    size_t line = parser->current->line;
+    size_t column = parser->current->column;
     parser_expect_advance(parser, TOKEN_IDENTIFIER);
+    char *name = parser->previous->value;
     parser_expect_advance(parser, TOKEN_COLON);
-    parser_parse_type(parser);
+    data_type_t type = parser_parse_type(parser);
     parser_expect_advance(parser, TOKEN_EQ);
-    parser_parse_expression(parser);
+    ast_expr_node_t *expr_initializer = parser_parse_expression(parser);
+    ast_stmt_node_t *node = init_stmt_var_decl(name, type, expr_initializer, line, column);
+    return node;
 }
 
 void parser_parse_statement(parser_t *parser) {
     if (parser_match(parser, TOKEN_IDENTIFIER)) {
         token_t *next = parser_peek_token(parser, 1);
         if (next->type == TOKEN_COLON) {
-            parser_parse_var_decl(parser);
+            ast_stmt_node_t *node = parser_parse_var_decl(parser);
+            free_stmt_node(node);
             parser_expect_advance(parser, TOKEN_SEMICOLON);
         } else if (next->type == TOKEN_EQ) {
             parser_parse_assignment(parser);
@@ -187,7 +181,8 @@ void parser_parse_statement(parser_t *parser) {
             parser_expect_advance(parser, TOKEN_SEMICOLON);
         }
     } else if (parser_match(parser, TOKEN_IDENTIFIER)) {
-        parser_parse_var_decl(parser);
+        ast_stmt_node_t *node = parser_parse_var_decl(parser);
+        free_stmt_node(node);
         parser_expect_advance(parser, TOKEN_SEMICOLON);
     } else if (parser_match(parser, TOKEN_PRINT)) {
         parser_parse_print_statement(parser);
@@ -271,7 +266,7 @@ void parser_parse_for_statement(parser_t *parser) {
     }
     parser_expect_advance(parser, TOKEN_SEMICOLON);
     if (parser->current && parser->current->type != TOKEN_RPAREN) {
-        parser_parse_assignment(parser);
+            parser_parse_assignment(parser);
     }
     parser_expect_advance(parser, TOKEN_RPAREN);
     parser_expect_advance(parser, TOKEN_LBRACE);
@@ -307,26 +302,26 @@ void parser_parse_return_statement(parser_t *parser) {
     }    
 }
 
-void parser_parse_expression(parser_t *parser) {
-    parser_parse_assignment(parser);
+ast_expr_node_t *parser_parse_expression(parser_t *parser) {
+    // START HERE
+    parser_parse_logical_or(parser);
+    ast_expr_node_t *expr = init_expr_literal_int(120, parser->current->line, parser->current->column);
+    return expr;
 }
 
 void parser_parse_assignment(parser_t *parser) {
-    if (parser->current && parser->current->type == TOKEN_IDENTIFIER && parser_peek_token(parser, 1)->type == TOKEN_EQ) {
-        parser_expect_advance(parser, TOKEN_IDENTIFIER);
-        parser_expect_advance(parser, TOKEN_EQ);
-        parser_parse_expression(parser);
-    } else {
-        parser_parse_logical_or(parser);
-    }
+    parser_expect_advance(parser, TOKEN_IDENTIFIER);
+    parser_expect_advance(parser, TOKEN_EQ);
+    parser_parse_expression(parser);
 }
 
-void parser_parse_logical_or(parser_t *parser) {
+ast_expr_node_t *parser_parse_logical_or(parser_t *parser) {
     parser_parse_logical_and(parser);
     while (parser_match(parser, TOKEN_OR)) {
         parser_advance(parser);
         parser_parse_logical_and(parser);
     }
+    return NULL;
 }
 
 void parser_parse_logical_and(parser_t *parser) {
@@ -414,10 +409,39 @@ void parser_parse_primary(parser_t *parser) {
     }
 }
 
-void parser_parse_arg_list(parser_t *parser) {
+ast_expr_node_t *parser_parse_arg_list(parser_t *parser) {
+    // size_t arg_count = 0;
+    // ast_expr_node_t **args = malloc(sizeof(ast_expr_node_t *) * 8);
+    // CHECK_MEM_ALLOC_ERROR(args);
+    // if (!args) {
+    //     fprintf(stderr, "Failed to allocate memory for argument list\n");
+    //     exit(EXIT_FAILURE);
+    // }
+    // while (parser->current && parser->current->type != TOKEN_RPAREN) {
+    //     if (arg_count >= 8) {
+    //         args = realloc(args, sizeof(ast_expr_node_t *) * (arg_count + 8));
+    //         if (!args) {
+    //             fprintf(stderr, "Failed to reallocate memory for argument list\n");
+    //             exit(EXIT_FAILURE);
+    //         }
+    //     }
+    //     args[arg_count++] = parser_parse_expression(parser);
+    //     if (parser_match(parser, TOKEN_COMMA)) {
+    //         parser_advance(parser);
+    //     }
+    // }
+    // ast_expr_node_t *arg_list = init_expr_arg_list(args, arg_count, parser->current->line, parser->current->column);
+    // if (!arg_list) {
+    //     fprintf(stderr, "Failed to create argument list expression\n");
+    //     exit(EXIT_FAILURE);
+    // }
+    // arg_list->line = parser->current->line;
+    // arg_list->column = parser->current->column;
+    // return arg_list;
     parser_parse_expression(parser);
     while (parser_match(parser, TOKEN_COMMA)) {
         parser_advance(parser);
         parser_parse_expression(parser);
     }
+    return NULL;
 }

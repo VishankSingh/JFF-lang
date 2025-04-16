@@ -9,6 +9,7 @@ param_list      ::= param { "," param } ;
 param           ::= IDENTIFIER ":" type ;
 
 var_decl        ::= IDENTIFIER ":" type "=" expression ;
+assignment      ::= IDENTIFIER "=" expression
 
 statement       ::= var_decl ";"
                  | assignment ";"
@@ -22,10 +23,8 @@ statement       ::= var_decl ";"
                  | expression ";"
                  ;
 
-expression      ::= assignment ;
+expression      ::= logical_or ;
 
-assignment      ::= IDENTIFIER "=" expression
-                 | logical_or ;
 
 logical_or      ::= logical_and { "||" logical_and } ;
 logical_and     ::= equality { "&&" equality } ;

@@ -98,7 +98,7 @@ void print_token_value(token_t *token);
 char *token_type_to_string(token_type_t type);
 
 typedef struct LEXER_STRUCT {
-    const char *filename;
+    char *filename;
     char *input;
     size_t position;
     size_t read_position;

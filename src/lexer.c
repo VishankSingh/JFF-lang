@@ -4,7 +4,6 @@
  * Github: https://github.com/VishankSingh
  */
 #define _POSIX_C_SOURCE 200809L
-#include "include/lexer.h"
 
 #include <ctype.h>
 #include <stddef.h>
@@ -14,11 +13,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "include/lexer.h"
+#include "include/utils.h"
+
 token_t *init_token(token_type_t type, const char *value, size_t length, size_t line, size_t column) {
-    token_t *token = (token_t *)malloc(sizeof(token_t));
+    token_t *token = malloc(sizeof(token_t));
+    CHECK_MEM_ALLOC_ERROR(token);
     token->type = type;
     token->length = length;
-    token->value = (char *)malloc(length + 1);
+    token->value = malloc(length + 1);
+    CHECK_MEM_ALLOC_ERROR(token->value);
     memcpy(token->value, value, length);
     token->value[length] = '\0';
     token->line = line;
@@ -29,7 +33,9 @@ token_t *init_token(token_type_t type, const char *value, size_t length, size_t 
 void free_token(token_t *token) {
     if (token) {
         free(token->value);
+        token->value = NULL;
         free(token);
+        token = NULL;
     }
 }
 
@@ -161,8 +167,9 @@ char *token_type_to_string(token_type_t type) {
 
 
 lexer_t *init_lexer(const char *filename) {
-    lexer_t *lexer = (lexer_t *)malloc(sizeof(lexer_t));
-    lexer->filename = filename;
+    lexer_t *lexer = malloc(sizeof(lexer_t));
+    CHECK_MEM_ALLOC_ERROR(lexer);
+    lexer->filename = strdup(filename);
 
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
@@ -173,16 +180,11 @@ lexer_t *init_lexer(const char *filename) {
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
     rewind(file);
-    lexer->input = (char *)malloc(file_size + 1);
+    lexer->input = malloc(file_size + 1);
+    CHECK_MEM_ALLOC_ERROR(lexer->input);
     fread(lexer->input, 1, file_size, file);
     lexer->input[file_size] = '\0';
     fclose(file);
-    // lexer->input = NULL;
-
-    // size_t input_length = strlen(input) + 1;
-    // lexer->input = (char *)malloc(input_length);
-    // memcpy(lexer->input, input, input_length);
-    // lexer->input = strdup(input);
 
     lexer->position = 0;
     lexer->read_position = 0;
@@ -198,7 +200,8 @@ lexer_t *init_lexer(const char *filename) {
 
     lexer->token_count = 0;
     lexer->tokens_capacity = 10;
-    lexer->tokens = (token_t **)malloc(lexer->tokens_capacity * sizeof(token_t *));
+    lexer->tokens = malloc(lexer->tokens_capacity * sizeof(token_t *));
+    CHECK_MEM_ALLOC_ERROR(lexer->tokens);
 
     lexer_advance(lexer);
     return lexer;
@@ -209,9 +212,14 @@ void free_lexer(lexer_t *lexer) {
         free(lexer->input);
         for (size_t i = 0; i < lexer->token_count; i++) {
             free_token(lexer->tokens[i]);
+            lexer->tokens[i] = NULL;
         }
+        free(lexer->filename);
+        lexer->filename = NULL;
         free(lexer->tokens);
+        lexer->tokens = NULL;
         free(lexer);
+        lexer = NULL;
     }
 }
 

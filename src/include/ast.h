@@ -10,58 +10,111 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+
 #include "lexer.h"
 
-// typedef enum {
-//     // Expressions
-//     AST_EXPR_LITERAL_INT,
-//     AST_EXPR_LITERAL_FLOAT,
-//     AST_EXPR_LITERAL_STRING,
-//     AST_EXPR_IDENTIFIER,
-//     AST_EXPR_BINARY,
-//     AST_EXPR_UNARY,
-//     AST_EXPR_ASSIGNMENT,
-//     AST_EXPR_CALL,
-//     AST_EXPR_ARG_LIST,
-
-//     // Statements
-//     AST_STMT_VAR_DECL,
-//     AST_STMT_ASSIGN,
-//     AST_STMT_RETURN,
-//     AST_STMT_PRINT,
-//     AST_STMT_BREAK,
-//     AST_STMT_CONTINUE,
-//     AST_STMT_IF,
-//     AST_STMT_WHILE,
-//     AST_STMT_FOR,
-//     AST_STMT_EXPR,
-//     AST_STMT_BLOCK,
-
-//     // Declarations
-//     AST_DECL_PARAM,
-//     AST_DECL_FUNCTION,
-//     AST_DECL_GLOBAL_VAR
-// } ast_node_type_t;
-
+/**
+ * @brief Enum representing the category of an AST node.
+ */
 typedef enum {
-    AST_NODE_TYPE_EXPR,
-    AST_NODE_TYPE_STMT,
-    AST_NODE_TYPE_DECL
+    AST_NODE_CATEGORY_EXPR, /**< Expression node */
+    AST_NODE_CATEGORY_STMT, /**< Statement node */
+    AST_NODE_CATEGORY_DECL  /**< Declaration node */
 } ast_node_category_t;
 
+/**
+ * @brief Enum representing the data type of an AST node.
+ */
 typedef enum {
-    AST_DATA_TYPE_INT,
-    AST_DATA_TYPE_FLOAT,
-    AST_DATA_TYPE_BOOL,
-    AST_DATA_TYPE_STRING,
-    AST_DATA_TYPE_VOID,
+    DATA_TYPE_INT,    /**< Integer data type */
+    DATA_TYPE_FLOAT,  /**< Float data type */
+    DATA_TYPE_BOOL,   /**< Boolean data type */
+    DATA_TYPE_STRING, /**< String data type */
+    DATA_TYPE_VOID    /**< Void data type */
 } data_type_t;
 
+/**
+ * @brief Converts a data type enum to its string representation.
+ * 
+ * @param type The data type to convert.
+ * @return A string representation of the data type.
+ */
+char *data_type_to_string(data_type_t type);
+
+//--------------------------------------- Forward Declarations ----------------------------------------------------------------------
+
+/**
+ * struct AST_NODE_STRUCT {
+ *     ast_node_category_t type;
+ *     union {
+ *         ast_expr_node_t expr_node;
+ *         ast_stmt_node_t stmt_node;
+ *         ast_decl_node_t decl_node;
+ *     } data;
+ *     size_t line;
+ *     size_t column;
+ * };
+ */
 typedef struct AST_NODE_STRUCT ast_node_t;
+
+
+/**
+ * struct ast_expr_node_struct {
+ *     expr_type_t type;
+ *     union {
+ *         expr_literal_int_t literal_int;
+ *         expr_literal_float_t literal_float;
+ *         expr_literal_string_t literal_string;
+ *         expr_identifier_t identifier;
+ *         expr_binary_t binary;
+ *         expr_unary_t unary;
+ *         expr_assignment_t assignment;
+ *         expr_call_t call;
+ *         expr_arg_list_t arg_list;
+ *     } data;
+ * 
+ *     size_t line;
+ *     size_t column;
+ * };
+ */
 typedef struct ast_expr_node_struct ast_expr_node_t;
+
+/**
+ * struct ast_stmt_node_struct {
+ *     stmt_type_t type;
+ *     union {
+ *         stmt_var_decl_t var_decl;
+ *         stmt_assign_t assign;
+ *         stmt_return_t return_stmt;
+ *         stmt_print_t print_stmt;
+ *         stmt_break_t break_stmt;
+ *         stmt_continue_t continue_stmt;
+ *         stmt_if_t if_stmt;
+ *         stmt_while_t while_stmt;
+ *         stmt_for_t for_stmt;
+ *         stmt_expr_t expr_stmt;
+ *         stmt_block_t block_stmt;
+ *     } data;
+ * 
+ *     size_t line;
+ *     size_t column;
+ * };
+ */
 typedef struct ast_stmt_node_struct ast_stmt_node_t;
+
+/**
+ * struct ast_decl_node_struct {
+ *     decl_type_t type;
+ *     union {
+ *         decl_function_t function_decl;
+ *     } data;
+ * 
+ *     size_t line;
+ *     size_t column;
+ * };
+ */
 typedef struct ast_decl_node_struct ast_decl_node_t;
-//--------------------------------------- Expression Node -----------------------------------------
+//--------------------------------------- Expression Node ---------------------------------------------------------------------------
 
 typedef enum {
     EXPR_LITERAL_INT,
@@ -120,22 +173,22 @@ typedef struct expr_call_struct {
 struct ast_expr_node_struct {
     expr_type_t type;
     union {
-        expr_literal_int_t literal_int;
-        expr_literal_float_t literal_float;
-        expr_literal_string_t literal_string;
-        expr_identifier_t identifier;
-        expr_binary_t binary;
-        expr_unary_t unary;
-        expr_assignment_t assignment;
-        expr_call_t call;
-        expr_arg_list_t arg_list;
+        expr_literal_int_t *literal_int;
+        expr_literal_float_t *literal_float;
+        expr_literal_string_t *literal_string;
+        expr_identifier_t *identifier;
+        expr_binary_t *binary;
+        expr_unary_t *unary;
+        expr_assignment_t *assignment;
+        expr_call_t *call;
+        expr_arg_list_t *arg_list;
     } data;
 
     size_t line;
     size_t column;
 };
 
-//--------------------------------------- Statement Node -----------------------------------------
+//--------------------------------------- Statement Node ----------------------------------------------------------------------------
 typedef enum {
     STMT_VAR_DECL,
     STMT_ASSIGN,
@@ -215,6 +268,7 @@ typedef struct stmt_for_struct {
     size_t body_size;
 } stmt_for_t;
 
+// CHECKTHIS: why is this even needed?
 typedef struct stmt_expr_struct {
     ast_expr_node_t *expression;
 } stmt_expr_t;
@@ -227,27 +281,26 @@ typedef struct stmt_block_struct {
 struct ast_stmt_node_struct {
     stmt_type_t type;
     union {
-        stmt_var_decl_t var_decl;
-        stmt_assign_t assign;
-        stmt_return_t return_stmt;
-        stmt_print_t print_stmt;
-        stmt_break_t break_stmt;
-        stmt_continue_t continue_stmt;
-        stmt_if_t if_stmt;
-        stmt_while_t while_stmt;
-        stmt_for_t for_stmt;
-        stmt_expr_t expr_stmt;
-        stmt_block_t block_stmt;
+        stmt_var_decl_t *var_decl;
+        stmt_assign_t *assign;
+        stmt_return_t *return_stmt;
+        stmt_print_t *print_stmt;
+        stmt_break_t *break_stmt;
+        stmt_continue_t *continue_stmt;
+        stmt_if_t *if_stmt;
+        stmt_while_t *while_stmt;
+        stmt_for_t *for_stmt;
+        stmt_expr_t *expr_stmt;
+        stmt_block_t *block_stmt;
     } data;
 
     size_t line;
     size_t column;
 };
 
-//--------------------------------------- Declaration Node --------------------------------------
+//--------------------------------------- Declaration Node --------------------------------------------------------------------------
 typedef enum {
     DECL_FUNCTION,
-    DECL_GLOBAL_VAR
 } decl_type_t;
 
 typedef struct param_struct {
@@ -264,32 +317,23 @@ typedef struct decl_function_struct {
     size_t body_count;
 } decl_function_t;
 
-typedef struct decl_global_var_struct {
-    char *name;
-    data_type_t type;
-    ast_expr_node_t *initializer;
-} decl_global_var_t;
-
 struct ast_decl_node_struct {
     decl_type_t type;
     union {
-        decl_function_t function_decl;
-        decl_global_var_t global_var_decl;
+        decl_function_t *function_decl;
     } data;
-
     size_t line;
     size_t column;
 };
 
 
-
-//--------------------------------------- AST Node ----------------------------------------------
+//--------------------------------------- AST Node ----------------------------------------------------------------------------------
 struct AST_NODE_STRUCT {
     ast_node_category_t type;
     union {
-        ast_expr_node_t expr_node;
-        ast_stmt_node_t stmt_node;
-        ast_decl_node_t decl_node;
+        ast_expr_node_t *expr_node;
+        ast_stmt_node_t *stmt_node;
+        ast_decl_node_t *decl_node;
     } data;
 
     size_t line;
@@ -301,16 +345,21 @@ typedef struct AST_STRUCT {
     size_t node_count;
     size_t nodes_capacity;
 } ast_t;
-//--------------------------------------- Function Prototypes -----------------------------------
+//--------------------------------------- Function Prototypes -----------------------------------------------------------------------
 
 void free_ast(ast_t *ast);
 ast_t *init_ast();
 
+// Forward declarations done above
+// typedef struct AST_NODE_STRUCT ast_node_t;
+// typedef struct ast_expr_node_struct ast_expr_node_t;
+// typedef struct ast_stmt_node_struct ast_stmt_node_t;
+// typedef struct ast_decl_node_struct ast_decl_node_t;
 
-//--------------------------------------- AST Node Initializers ---------------------------------
+//--------------------------------------- AST Node Initializers ---------------------------------------------------------------------
 ast_node_t *init_ast_node(ast_node_category_t type, size_t line, size_t column);
 
-//-------------------- Expression Node Initializers ---------------------------------------------
+//-------------------- Expression Node Initializers ---------------------------------------------------------------------------------
 ast_expr_node_t *init_expr_literal_int(int value, size_t line, size_t column);
 ast_expr_node_t *init_expr_literal_float(float value, size_t line, size_t column);
 ast_expr_node_t *init_expr_literal_string(const char * const value, size_t line, size_t column);
@@ -321,7 +370,7 @@ ast_expr_node_t *init_expr_assignment(const char *name, ast_expr_node_t *value, 
 ast_expr_node_t *init_expr_call(const char *name, expr_arg_list_t *arg_list, size_t line, size_t column);
 ast_expr_node_t *init_expr_arg_list(ast_expr_node_t **args, size_t arg_count, size_t line, size_t column);
 
-//-------------------- Statement Node Initializers ----------------------------------------------
+//-------------------- Statement Node Initializers ----------------------------------------------------------------------------------
 ast_stmt_node_t *init_stmt_var_decl(const char *name, data_type_t type, ast_expr_node_t *initializer, size_t line, size_t column);
 ast_stmt_node_t *init_stmt_assign(const char *name, ast_expr_node_t *value, size_t line, size_t column);
 ast_stmt_node_t *init_stmt_return(ast_expr_node_t *value, size_t line, size_t column);
@@ -339,16 +388,27 @@ ast_stmt_node_t *init_stmt_for(for_init_kind_t init_kind, stmt_var_decl_t *var_d
 ast_stmt_node_t *init_stmt_expr(ast_expr_node_t *expression, size_t line, size_t column);
 ast_stmt_node_t *init_stmt_block(ast_stmt_node_t **statements, size_t statement_count, size_t line, size_t column);
 
-//-------------------- Declaration Node Initializers -------------------------------------------
+//-------------------- Declaration Node Initializers --------------------------------------------------------------------------------
 param_t *init_decl_param(const char *name, data_type_t type, size_t line, size_t column);
 ast_decl_node_t *init_decl_function(const char *name, data_type_t return_type, param_t **params,
                                  size_t param_count, ast_stmt_node_t **body, size_t body_count,
                                  size_t line, size_t column);
-ast_decl_node_t *init_decl_global_var(const char *name, data_type_t type, ast_expr_node_t *initializer,
-                                 size_t line, size_t column);
+
+
+//-------------------- Free Functions -----------------------------------------------------------------------------------------------
+void free_expr_node(ast_expr_node_t *expr);
+void free_stmt_node(ast_stmt_node_t *stmt);
+void free_decl_node(ast_decl_node_t *decl);
+void free_ast_node(ast_node_t *node);
+
 
 void print_ast(ast_t *ast);
 void print_ast_node(ast_node_t *node, int indent_level);
 
+void print_indent(int indent_level);
+
+void print_expr(ast_expr_node_t *expr, int indent);
+void print_stmt(ast_stmt_node_t *stmt, int indent);
+void print_decl(ast_decl_node_t *decl, int indent);
 
 #endif // AST_H

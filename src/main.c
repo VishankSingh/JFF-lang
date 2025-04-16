@@ -14,7 +14,7 @@
 
 
 int main(void) {
-    char *filename = "/home/vis/Desk/codes/compilers_1/part_2/examples/e1.jff";
+    char *filename = "/home/vis/Desk/codes/compilers_1/part_2/examples/e2.jff";
     lexer_t *lexer = init_lexer(filename);
     if (!lexer) {
         fprintf(stderr, "Failed to initialize lexer\n");
@@ -42,15 +42,11 @@ int main(void) {
     }
     parser_parse_program(parser);
 
-    ast_node_t *first_node = parser->ast->nodes[0];
-    if (first_node) {
-        printf("First node type: %d\n", first_node->type);
-        printf("First node line: %zu\n", first_node->line);
-        printf("First node column: %zu\n", first_node->column);
-    } else {
-        printf("No nodes in AST\n");
-    }
+    printf("Nodes in AST: %zu\n", parser->ast->node_count);
+
+    print_ast(parser->ast);
     
     free_lexer(lexer);
+    free_parser(parser);
     return 0;
 }
