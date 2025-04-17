@@ -6,12 +6,9 @@
 #define _POSIX_C_SOURCE 200809L 
 
 #include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <string.h>
 
 #include "include/ast.h"
-#include "include/parser.h"
 #include "include/lexer.h"
 #include "include/utils.h"
 
@@ -199,11 +196,12 @@ void free_decl_node(ast_decl_node_t *decl) {
     switch (decl->type) {
         case DECL_FUNCTION: {
             free(decl->data.function_decl->name);
-            for (size_t i = 0; i < decl->data.function_decl->param_count; ++i) {
-                free(decl->data.function_decl->params[i]->name);
-                free(decl->data.function_decl->params[i]);
+            for (size_t i = 0; i < decl->data.function_decl->param_list->param_count; ++i) {
+                free(decl->data.function_decl->param_list->params[i].name);
             }
-            free(decl->data.function_decl->params);
+            free(decl->data.function_decl->param_list->params);
+            free(decl->data.function_decl->param_list);
+
             for (size_t i = 0; i < decl->data.function_decl->body_count; ++i) {
                 free_stmt_node(decl->data.function_decl->body[i]);
             }
@@ -244,7 +242,7 @@ void free_ast(ast_t *ast) {
     free(ast);
 }
 
-ast_t *init_ast() {
+ast_t *init_ast(void) {
     ast_t *ast = malloc(sizeof(ast_t));
     CHECK_MEM_ALLOC_ERROR(ast);
     ast->node_count = 0;
@@ -553,18 +551,29 @@ ast_stmt_node_t *init_stmt_block(ast_stmt_node_t **statements, size_t statement_
 
 //-------------------- Declaration Node Initializers -------------------------------------------
 param_t *init_decl_param(const char *name, data_type_t type, size_t line, size_t column) {
-    (void)line;
-    (void)column;
     param_t *param = malloc(sizeof(param_t));
     CHECK_MEM_ALLOC_ERROR(param);
     param->name = strdup(name);
     param->type = type;
+    param->line = line;
+    param->column = column;
     return param;
 }
 
-ast_decl_node_t *init_decl_function(const char *name, data_type_t return_type, param_t **params,
-                                 size_t param_count, ast_stmt_node_t **body, size_t body_count,
-                                 size_t line, size_t column) {
+param_list_t *init_decl_param_list(param_t *params, size_t param_count, size_t line, size_t column) {
+    (void)line;
+    (void)column;
+    param_list_t *param_list = malloc(sizeof(param_list_t));
+    CHECK_MEM_ALLOC_ERROR(param_list);
+    param_list->params = params;
+    param_list->param_count = param_count;
+    param_list->line = line;
+    param_list->column = column;
+    return param_list;
+}
+
+ast_decl_node_t *init_decl_function(const char *name, data_type_t return_type, param_list_t *params, 
+                            ast_stmt_node_t **body, size_t body_count, size_t line, size_t column) {
     ast_decl_node_t *node = malloc(sizeof(ast_decl_node_t));
     CHECK_MEM_ALLOC_ERROR(node);
     node->type = DECL_FUNCTION;
@@ -572,8 +581,7 @@ ast_decl_node_t *init_decl_function(const char *name, data_type_t return_type, p
     CHECK_MEM_ALLOC_ERROR(node->data.function_decl);
     node->data.function_decl->name = strdup(name);
     node->data.function_decl->return_type = return_type;
-    node->data.function_decl->params = params;
-    node->data.function_decl->param_count = param_count;
+    node->data.function_decl->param_list = params;
     node->data.function_decl->body = body;
     node->data.function_decl->body_count = body_count;
     node->line = line;
@@ -800,9 +808,11 @@ void print_decl(ast_decl_node_t *decl, int indent) {
             printf("Function Declaration: %s (return type %s)\n", decl->data.function_decl->name, data_type_to_string(decl->data.function_decl->return_type));
             print_indent(indent + 1);
             printf("Parameters:\n");
-            for (size_t i = 0; i < decl->data.function_decl->param_count; ++i) {
+            for (size_t i = 0; i < decl->data.function_decl->param_list->param_count; ++i) {
                 print_indent(indent + 2);
-                printf("Param: %s (type %d)\n", decl->data.function_decl->params[i]->name, decl->data.function_decl->params[i]->type);
+                printf("Param: %s (type %s)\n", 
+                    decl->data.function_decl->param_list->params[i].name, 
+                    data_type_to_string(decl->data.function_decl->param_list->params[i].type));
             }
             print_indent(indent + 1);
             printf("Body:\n");

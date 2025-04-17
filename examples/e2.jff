@@ -3,6 +3,10 @@ test_vvar : int = (a || b) && c;
 bool_var : bool = 01 && 100 && 10 || (12 == 12 >= 123) || (-a || 13);
 test : int = func_call(arg1, arg2);
 
-func main() : void {
+func test_func(param1 : int, param2 : bool) : bool {
+    
+}
+
+func main(tt : bool) : void {
     
 }

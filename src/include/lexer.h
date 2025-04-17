@@ -125,6 +125,6 @@ char lexer_peek(lexer_t *lexer);
 
 void lexer_skip_whitespace(lexer_t *lexer);
 void lexer_skip_comment(lexer_t *lexer);
-void lexer_apend_token(lexer_t *lexer, token_t *token);
+void lexer_append_token(lexer_t *lexer, token_t *token);
 
 #endif // LEXER_H

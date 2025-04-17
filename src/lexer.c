@@ -7,8 +7,6 @@
 
 #include <ctype.h>
 #include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -73,7 +71,7 @@ void print_token_type(token_type_t type) {
         case TOKEN_TYPE_VOID:       printf("TYPE VOID     "); break;
         
         case TOKEN_EQ:              printf("EQUAL         "); break;
-        case TOKEN_EQEQ:             printf("DOUBLE EQUAL  "); break;
+        case TOKEN_EQEQ:            printf("DOUBLE EQUAL  "); break;
         case TOKEN_NEQ:             printf("NOT EQUAL     "); break;
         case TOKEN_PLUS:            printf("PLUS          "); break;
         case TOKEN_MINUS:           printf("MINUS         "); break;
@@ -90,7 +88,7 @@ void print_token_type(token_type_t type) {
         case TOKEN_RPAREN:          printf("RPAREN        "); break;
         case TOKEN_LBRACE:          printf("LBRACE        "); break;
         case TOKEN_RBRACE:          printf("RBRACE        "); break;
-        case TOKEN_SEMICOLON:      printf("SEMINCOLON    "); break;
+        case TOKEN_SEMICOLON:       printf("SEMICOLON     "); break;
         case TOKEN_COLON:           printf("COLON         "); break;
         case TOKEN_COMMA:           printf("COMMA         "); break;
 
@@ -256,10 +254,10 @@ void lexer_skip_whitespace(lexer_t *lexer) {
     }
 }
 
-void lexer_apend_token(lexer_t *lexer, token_t *token) {
+void lexer_append_token(lexer_t *lexer, token_t *token) {
     if (lexer->token_count >= lexer->tokens_capacity) {
         lexer->tokens_capacity *= 2;
-        lexer->tokens = (token_t **)realloc(lexer->tokens, lexer->tokens_capacity * sizeof(token_t));
+        lexer->tokens = realloc(lexer->tokens, lexer->tokens_capacity * sizeof(token_t));
     }
     lexer->tokens[lexer->token_count++] = token;
 }

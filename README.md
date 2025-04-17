@@ -1,3 +1,3 @@
 # jff-language
 
-language i am making just for fun
+language I am making just for fun

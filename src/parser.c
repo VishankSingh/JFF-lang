@@ -112,42 +112,70 @@ ast_decl_node_t *parser_parse_function_decl(parser_t *parser) {
     parser_expect_advance(parser, TOKEN_IDENTIFIER);
     parser_expect_advance(parser, TOKEN_LPAREN);
 
-    //--------------------------- param list --------------------------------
+    param_list_t *param_list = NULL;
     if (parser->current && parser->current->type != TOKEN_RPAREN) {
-        parser_parse_param_list(parser);
+        param_list = parser_parse_param_list(parser);
     } else {
-        // handle empty param list
+        param_list = malloc(sizeof(param_list_t));
+        CHECK_MEM_ALLOC_ERROR(param_list);
+        param_list->params = NULL;
+        param_list->param_count = 0;
     }
-    //-----------------------------------------------------------------------
-
 
     parser_expect_advance(parser, TOKEN_RPAREN);
     parser_expect_advance(parser, TOKEN_COLON);
     data_type_t return_type = parser_parse_type(parser);
     parser_expect_advance(parser, TOKEN_LBRACE);
-
-
+    //--------------------------- function body --------------------------------
     while (parser->current && parser->current->type != TOKEN_RBRACE) {
         parser_parse_statement(parser);
     }
-
+    //--------------------------------------------------------------------------
 
     parser_expect_advance(parser, TOKEN_RBRACE);
-    return init_decl_function(name, return_type, NULL, 0, NULL, 0, line, column);
+    return init_decl_function(name, return_type, param_list, NULL, 0, line, column);
 }
 
-void parser_parse_param_list(parser_t *parser) {
-    parser_parse_param(parser);
+param_list_t *parser_parse_param_list(parser_t *parser) {
+    size_t param_capacity = 1;
+    size_t param_count = 0;
+    param_t *params = malloc(sizeof(param_t) * param_capacity);
+    CHECK_MEM_ALLOC_ERROR(params);
+    param_t *param = parser_parse_param(parser);
+    params[param_count++] = *param;
+    free(param);
     while (parser_match(parser, TOKEN_COMMA)) {
         parser_advance(parser);
-        parser_parse_param(parser);
+        param = parser_parse_param(parser);
+        if (param_count >= param_capacity) {
+            param_capacity *= 2;
+            params = realloc(params, sizeof(param_t) * param_capacity);
+            CHECK_MEM_ALLOC_ERROR(params);
+        }
+        params[param_count++] = *param;
+        free(param);
     }
+    param_list_t *param_list = malloc(sizeof(param_list_t));
+    CHECK_MEM_ALLOC_ERROR(param_list);
+    param_list->params = params;
+    param_list->param_count = param_count;
+    param_list->line = parser->current->line;
+    param_list->column = parser->current->column;
+    return param_list;
 }
 
-void parser_parse_param(parser_t *parser) {
+param_t *parser_parse_param(parser_t *parser) {
+    char *name = parser->current->value;
     parser_expect_advance(parser, TOKEN_IDENTIFIER);
     parser_expect_advance(parser, TOKEN_COLON);
-    parser_parse_type(parser);
+    data_type_t type = parser_parse_type(parser);
+    param_t *param = malloc(sizeof(param_t));
+    CHECK_MEM_ALLOC_ERROR(param);
+    param->name = strdup(name);
+    param->type = type;
+    param->line = parser->current->line;
+    param->column = parser->current->column;
+    return param;
 }
 
 data_type_t parser_parse_type(parser_t *parser) {
@@ -200,10 +228,6 @@ void parser_parse_statement(parser_t *parser) {
             parser_parse_expression(parser);
             parser_expect_advance(parser, TOKEN_SEMICOLON);
         }
-    } else if (parser_match(parser, TOKEN_IDENTIFIER)) {
-        ast_stmt_node_t *node = parser_parse_var_decl(parser);
-        free_stmt_node(node);
-        parser_expect_advance(parser, TOKEN_SEMICOLON);
     } else if (parser_match(parser, TOKEN_PRINT)) {
         parser_parse_print_statement(parser);
         parser_expect_advance(parser, TOKEN_SEMICOLON);
@@ -228,6 +252,12 @@ void parser_parse_statement(parser_t *parser) {
         parser_parse_expression(parser);
         parser_expect_advance(parser, TOKEN_SEMICOLON);
     }
+}
+
+void parser_parse_assignment(parser_t *parser) {
+    parser_expect_advance(parser, TOKEN_IDENTIFIER);
+    parser_expect_advance(parser, TOKEN_EQ);
+    parser_parse_expression(parser);
 }
 
 void parser_parse_if_statement(parser_t *parser) {
@@ -326,12 +356,6 @@ ast_expr_node_t *parser_parse_expression(parser_t *parser) {
     return parser_parse_logical_or(parser);
 }
 
-void parser_parse_assignment(parser_t *parser) {
-    parser_expect_advance(parser, TOKEN_IDENTIFIER);
-    parser_expect_advance(parser, TOKEN_EQ);
-    parser_parse_expression(parser);
-}
-
 ast_expr_node_t *parser_parse_logical_or(parser_t *parser) {
     ast_expr_node_t *left = parser_parse_logical_and(parser);
     
@@ -354,17 +378,17 @@ ast_expr_node_t *parser_parse_logical_and(parser_t *parser) {
 }
 
 ast_expr_node_t *parser_parse_equality(parser_t *parser) {
-    ast_expr_node_t *left = parser_parse_comparision(parser);
+    ast_expr_node_t *left = parser_parse_comparasion(parser);
     while (parser_match(parser, TOKEN_EQEQ) || parser_match(parser, TOKEN_NEQ)) {
         token_type_t operator = parser->current->type;
         parser_advance(parser);
-        ast_expr_node_t *right = parser_parse_comparision(parser);
+        ast_expr_node_t *right = parser_parse_comparasion(parser);
         left = init_expr_binary(operator, left, right, parser->current->line, parser->current->column);
     }
     return left;
 }
 
-ast_expr_node_t *parser_parse_comparision(parser_t *parser) {
+ast_expr_node_t *parser_parse_comparasion(parser_t *parser) {
     ast_expr_node_t *left = parser_parse_term(parser);
     while (parser_match(parser, TOKEN_GT) 
         || parser_match(parser, TOKEN_GEQ)

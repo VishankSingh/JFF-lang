@@ -268,7 +268,7 @@ typedef struct stmt_for_struct {
     size_t body_size;
 } stmt_for_t;
 
-// CHECKTHIS: why is this even needed?
+// CHECK_THIS: why is this even needed?
 typedef struct stmt_expr_struct {
     ast_expr_node_t *expression;
 } stmt_expr_t;
@@ -306,13 +306,21 @@ typedef enum {
 typedef struct param_struct {
     char *name;
     data_type_t type;
+    size_t line;
+    size_t column;
 } param_t;
+
+typedef struct param_list_struct {
+    param_t *params;
+    size_t param_count;
+    size_t line;
+    size_t column;
+} param_list_t;
 
 typedef struct decl_function_struct {
     char *name;
     data_type_t return_type;
-    param_t **params;
-    size_t param_count;
+    param_list_t *param_list;
     ast_stmt_node_t **body;
     size_t body_count;
 } decl_function_t;
@@ -348,7 +356,7 @@ typedef struct AST_STRUCT {
 //--------------------------------------- Function Prototypes -----------------------------------------------------------------------
 
 void free_ast(ast_t *ast);
-ast_t *init_ast();
+ast_t *init_ast(void);
 
 // Forward declarations done above
 // typedef struct AST_NODE_STRUCT ast_node_t;
@@ -390,9 +398,9 @@ ast_stmt_node_t *init_stmt_block(ast_stmt_node_t **statements, size_t statement_
 
 //-------------------- Declaration Node Initializers --------------------------------------------------------------------------------
 param_t *init_decl_param(const char *name, data_type_t type, size_t line, size_t column);
-ast_decl_node_t *init_decl_function(const char *name, data_type_t return_type, param_t **params,
-                                 size_t param_count, ast_stmt_node_t **body, size_t body_count,
-                                 size_t line, size_t column);
+param_list_t *init_decl_param_list(param_t *params, size_t param_count, size_t line, size_t column);
+ast_decl_node_t *init_decl_function(const char *name, data_type_t return_type, param_list_t *params, 
+                            ast_stmt_node_t **body, size_t body_count, size_t line, size_t column);
 
 
 //-------------------- Free Functions -----------------------------------------------------------------------------------------------
