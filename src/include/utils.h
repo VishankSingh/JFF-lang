@@ -41,6 +41,11 @@
             exit(EXIT_FAILURE); \
         } \
     } while (0)
-    
+
+#define DEBUG_PRINT(msg) \
+    do { \
+        fprintf(stderr, "[DEBUG] %s:%d: %s\n", __FILE__, __LINE__, (msg)); \
+    } while (0)
+
 
 #endif // UTILS_H

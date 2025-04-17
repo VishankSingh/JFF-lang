@@ -342,10 +342,14 @@ token_t *lexer_next_token(lexer_t *lexer) {
             return init_token(TOKEN_IDENTIFIER, lexer->input + start, length, start_line, start_column);
         }
 
-        if (isdigit(lexer->current_char) || lexer->current_char == '-') {
+        if (isdigit(lexer->current_char) || ((lexer->current_char == '-' || lexer->current_char == '+') && isdigit(lexer_peek(lexer)))) {
             size_t start = lexer->position;
             size_t start_line = lexer->line;
             size_t start_column = lexer->column;
+
+            if (lexer->current_char == '-' || lexer->current_char == '+') {
+                lexer_advance(lexer);
+            }
 
             while (isdigit(lexer->current_char)) {
                 lexer_advance(lexer);

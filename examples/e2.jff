@@ -1,1 +1,8 @@
 var_name: int = 10;
+test_vvar : int = (a || b) && c;
+bool_var : bool = 01 && 100 && 10 || (12 == 12 >= 123) || (-a || 13);
+test : int = func_call(arg1, arg2);
+
+func main() : void {
+    
+}

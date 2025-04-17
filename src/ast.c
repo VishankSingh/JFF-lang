@@ -34,40 +34,37 @@ void free_expr_node(ast_expr_node_t *expr) {
             free(expr->data.literal_int);
             break;
         }
-
         case EXPR_LITERAL_FLOAT: {
             free(expr->data.literal_float);
             break;
         }
-
         case EXPR_LITERAL_STRING: {
             free(expr->data.literal_string->value);
             free(expr->data.literal_string);
             break;
         }
-        
         case EXPR_IDENTIFIER: {
             free(expr->data.identifier->name);
+            free(expr->data.identifier);
             break;
         }
-
         case EXPR_ASSIGNMENT: {
             free(expr->data.assignment->name);
             free_expr_node(expr->data.assignment->value);
+            free(expr->data.assignment);
             break;
         }
-
         case EXPR_BINARY: {
             free_expr_node(expr->data.binary->left);
             free_expr_node(expr->data.binary->right);
+            free(expr->data.binary);
             break;
         }
-
         case EXPR_UNARY: {
             free_expr_node(expr->data.unary->operand);
+            free(expr->data.unary);
             break;
         }
-
         case EXPR_CALL: {
             free(expr->data.call->name);
             for (size_t i = 0; i < expr->data.call->args->arg_count; ++i) {
@@ -75,14 +72,15 @@ void free_expr_node(ast_expr_node_t *expr) {
             }
             free(expr->data.call->args->args);
             free(expr->data.call->args);
+            free(expr->data.call);
             break;
         }
-
         case EXPR_ARG_LIST: {
             for (size_t i = 0; i < expr->data.arg_list->arg_count; ++i) {
                 free_expr_node(expr->data.arg_list->args[i]);
             }
             free(expr->data.arg_list->args);
+            free(expr->data.arg_list);
             break;
         }
     }
@@ -100,18 +98,15 @@ void free_stmt_node(ast_stmt_node_t *stmt) {
             free(stmt->data.var_decl);
             break;
         }
-
         case STMT_ASSIGN: {
             free(stmt->data.assign->name);
             free_expr_node(stmt->data.assign->value);
             break;
         }
-
         case STMT_RETURN: {
             free_expr_node(stmt->data.return_stmt->value);
             break;
         }
-
         case STMT_PRINT: {
             for (size_t i = 0; i < stmt->data.print_stmt->args->arg_count; ++i) {
                 free_expr_node(stmt->data.print_stmt->args->args[i]);
@@ -120,7 +115,6 @@ void free_stmt_node(ast_stmt_node_t *stmt) {
             free(stmt->data.print_stmt->args);
             break;
         }
-
         case STMT_BLOCK: {
             for (size_t i = 0; i < stmt->data.block_stmt->statement_count; ++i) {
                 free_stmt_node(stmt->data.block_stmt->statements[i]);
@@ -128,7 +122,6 @@ void free_stmt_node(ast_stmt_node_t *stmt) {
             free(stmt->data.block_stmt->statements);
             break;
         }
-
         case STMT_IF: {
             free_expr_node(stmt->data.if_stmt->if_condition);
             for (size_t i = 0; i < stmt->data.if_stmt->if_branch_size; ++i) {
@@ -154,7 +147,6 @@ void free_stmt_node(ast_stmt_node_t *stmt) {
             free(stmt->data.if_stmt->elif_branch_size);
             break;
         }
-
         case STMT_WHILE: {
             free_expr_node(stmt->data.while_stmt->condition);
             for (size_t i = 0; i < stmt->data.while_stmt->body_size; ++i) {
@@ -163,7 +155,6 @@ void free_stmt_node(ast_stmt_node_t *stmt) {
             free(stmt->data.while_stmt->body);
             break;
         }
-
         // TODO: correct this
         case STMT_FOR: {
             if (stmt->data.for_stmt->init_kind == FOR_INIT_VAR_DECL && stmt->data.for_stmt->init.var_decl) {
@@ -189,12 +180,10 @@ void free_stmt_node(ast_stmt_node_t *stmt) {
             free(stmt->data.for_stmt->body);
             break;
         }
-
         case STMT_EXPR: {
             free_expr_node(stmt->data.expr_stmt->expression);
             break;
         }
-
         case STMT_BREAK:
         case STMT_CONTINUE:
             // No dynamic memory to free for these types
@@ -208,7 +197,7 @@ void free_decl_node(ast_decl_node_t *decl) {
     if (!decl) return;
 
     switch (decl->type) {
-        case DECL_FUNCTION:
+        case DECL_FUNCTION: {
             free(decl->data.function_decl->name);
             for (size_t i = 0; i < decl->data.function_decl->param_count; ++i) {
                 free(decl->data.function_decl->params[i]->name);
@@ -221,6 +210,7 @@ void free_decl_node(ast_decl_node_t *decl) {
             free(decl->data.function_decl->body);
             free(decl->data.function_decl);
             break;
+        }
     }
 
     free(decl);
@@ -334,7 +324,7 @@ ast_expr_node_t *init_expr_identifier(const char *name, size_t line, size_t colu
     return node;
 }
 
-ast_expr_node_t *init_expr_binary(ast_expr_node_t *left, ast_expr_node_t *right, token_type_t operator, size_t line, size_t column) {
+ast_expr_node_t *init_expr_binary(token_type_t operator, ast_expr_node_t *left, ast_expr_node_t *right, size_t line, size_t column) {
     ast_expr_node_t *node = malloc(sizeof(ast_expr_node_t));
     CHECK_MEM_ALLOC_ERROR(node);
     node->type = EXPR_BINARY;
@@ -653,13 +643,13 @@ void print_expr(ast_expr_node_t *expr, int indent) {
             break;
 
         case EXPR_BINARY:
-            printf("Binary Expression (%d):\n", expr->data.binary->operator);
+            printf("Binary Expression (%s):\n", token_type_to_string(expr->data.binary->operator));
             print_expr(expr->data.binary->left, indent + 1);
             print_expr(expr->data.binary->right, indent + 1);
             break;
 
         case EXPR_UNARY:
-            printf("Unary Expression (%d):\n", expr->data.unary->operator);
+            printf("Unary Expression (%s):\n", token_type_to_string(expr->data.unary->operator));
             print_expr(expr->data.unary->operand, indent + 1);
             break;
 

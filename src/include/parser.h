@@ -39,7 +39,7 @@ void parser_expect(parser_t *parser, token_type_t type);
 
 void parser_parse_program(parser_t *parser);
 ast_node_t *parser_parse_declaration(parser_t *parser);
-void parser_parse_function_decl(parser_t *parser);
+ast_decl_node_t *parser_parse_function_decl(parser_t *parser);
 void parser_parse_param_list(parser_t *parser);
 void parser_parse_param(parser_t *parser);
 data_type_t parser_parse_type(parser_t *parser);
@@ -53,13 +53,13 @@ void parser_parse_for_statement(parser_t *parser);
 void parser_parse_while_statement(parser_t *parser);
 ast_expr_node_t *parser_parse_expression(parser_t *parser);
 ast_expr_node_t *parser_parse_logical_or(parser_t *parser);
-void parser_parse_logical_and(parser_t *parser);
-void parser_parse_equality(parser_t *parser);
-void parser_parse_comparision(parser_t *parser);
-void parser_parse_term(parser_t *parser);
-void parser_parse_factor(parser_t *parser);
-void parser_parse_unary(parser_t *parser);
-void parser_parse_primary(parser_t *parser);
-ast_expr_node_t *parser_parse_arg_list(parser_t *parser);
+ast_expr_node_t *parser_parse_logical_and(parser_t *parser);
+ast_expr_node_t *parser_parse_equality(parser_t *parser);
+ast_expr_node_t *parser_parse_comparision(parser_t *parser);
+ast_expr_node_t *parser_parse_term(parser_t *parser);
+ast_expr_node_t *parser_parse_factor(parser_t *parser);
+ast_expr_node_t *parser_parse_unary(parser_t *parser);
+ast_expr_node_t *parser_parse_primary(parser_t *parser);
+expr_arg_list_t *parser_parse_arg_list(parser_t *parser);
 
 #endif // PARSER_H

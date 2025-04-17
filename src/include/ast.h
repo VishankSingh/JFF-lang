@@ -364,7 +364,7 @@ ast_expr_node_t *init_expr_literal_int(int value, size_t line, size_t column);
 ast_expr_node_t *init_expr_literal_float(float value, size_t line, size_t column);
 ast_expr_node_t *init_expr_literal_string(const char * const value, size_t line, size_t column);
 ast_expr_node_t *init_expr_identifier(const char *name, size_t line, size_t column);
-ast_expr_node_t *init_expr_binary(ast_expr_node_t *left, ast_expr_node_t *right, token_type_t operator, size_t line, size_t column);
+ast_expr_node_t *init_expr_binary(token_type_t operator, ast_expr_node_t *left, ast_expr_node_t *right, size_t line, size_t column);
 ast_expr_node_t *init_expr_unary(token_type_t operator, ast_expr_node_t *operand, size_t line, size_t column);
 ast_expr_node_t *init_expr_assignment(const char *name, ast_expr_node_t *value, size_t line, size_t column);
 ast_expr_node_t *init_expr_call(const char *name, expr_arg_list_t *arg_list, size_t line, size_t column);
