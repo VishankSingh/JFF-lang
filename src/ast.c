@@ -98,10 +98,12 @@ void free_stmt_node(ast_stmt_node_t *stmt) {
         case STMT_ASSIGN: {
             free(stmt->data.assign->name);
             free_expr_node(stmt->data.assign->value);
+            free(stmt->data.assign);
             break;
         }
         case STMT_RETURN: {
             free_expr_node(stmt->data.return_stmt->value);
+            free(stmt->data.return_stmt);
             break;
         }
         case STMT_PRINT: {
@@ -110,6 +112,7 @@ void free_stmt_node(ast_stmt_node_t *stmt) {
             }
             free(stmt->data.print_stmt->args->args);
             free(stmt->data.print_stmt->args);
+            free(stmt->data.print_stmt);
             break;
         }
         case STMT_BLOCK: {
@@ -117,71 +120,81 @@ void free_stmt_node(ast_stmt_node_t *stmt) {
                 free_stmt_node(stmt->data.block_stmt->statements[i]);
             }
             free(stmt->data.block_stmt->statements);
+            free(stmt->data.block_stmt);
             break;
         }
         case STMT_IF: {
             free_expr_node(stmt->data.if_stmt->if_condition);
-            for (size_t i = 0; i < stmt->data.if_stmt->if_branch_size; ++i) {
-                free_stmt_node(stmt->data.if_stmt->if_branch[i]);
-            }
-            free(stmt->data.if_stmt->if_branch);
+            free_stmt_node(stmt->data.if_stmt->if_block);
 
-            for (size_t i = 0; i < stmt->data.if_stmt->elif_count; ++i) {
+            for (size_t i = 0; i < stmt->data.if_stmt->elif_blocks_count; ++i) {
                 free_expr_node(stmt->data.if_stmt->elif_conditions[i]);
-                for (size_t j = 0; j < stmt->data.if_stmt->elif_branch_size[i]; ++j) {
-                    free_stmt_node(stmt->data.if_stmt->elif_branches[i][j]);
-                }
-                free(stmt->data.if_stmt->elif_branches[i]);
+                free_stmt_node(stmt->data.if_stmt->elif_blocks[i]);
             }
             free(stmt->data.if_stmt->elif_conditions);
-            free(stmt->data.if_stmt->elif_branches);
+            free(stmt->data.if_stmt->elif_blocks);
 
-            for (size_t i = 0; i < stmt->data.if_stmt->else_branch_size; ++i) {
-                free_stmt_node(stmt->data.if_stmt->else_branch[i]);
-            }
-            free(stmt->data.if_stmt->else_branch);
-
-            free(stmt->data.if_stmt->elif_branch_size);
+            free_stmt_node(stmt->data.if_stmt->else_block);
             break;
         }
         case STMT_WHILE: {
             free_expr_node(stmt->data.while_stmt->condition);
-            for (size_t i = 0; i < stmt->data.while_stmt->body_size; ++i) {
-                free_stmt_node(stmt->data.while_stmt->body[i]);
-            }
-            free(stmt->data.while_stmt->body);
+            free_stmt_node(stmt->data.while_stmt->block);
+            free(stmt->data.while_stmt);
             break;
         }
         // TODO: correct this
         case STMT_FOR: {
-            if (stmt->data.for_stmt->init_kind == FOR_INIT_VAR_DECL && stmt->data.for_stmt->init.var_decl) {
-                free_stmt_node(stmt);
-            } else if (stmt->data.for_stmt->init_kind == FOR_INIT_ASSIGN && stmt->data.for_stmt->init.assign) {
-                free_stmt_node(init_stmt_assign(
-                    stmt->data.for_stmt->init.assign->name,
-                    stmt->data.for_stmt->init.assign->value,
-                    stmt->line, stmt->column));
+            if (stmt->data.for_stmt->init) {
+                switch (stmt->data.for_stmt->init->kind) {
+                    case FOR_INIT_VAR_DECL:
+                        if (stmt->data.for_stmt->init->data.var_decl) {
+                            free(stmt->data.for_stmt->init->data.var_decl->name);
+                            free_expr_node(stmt->data.for_stmt->init->data.var_decl->initializer);
+                            free(stmt->data.for_stmt->init->data.var_decl);
+                        }
+                        break;
+                    case FOR_INIT_ASSIGN:
+                        if (stmt->data.for_stmt->init->data.assign) {
+                            free(stmt->data.for_stmt->init->data.assign->name);
+                            free_expr_node(stmt->data.for_stmt->init->data.assign->value);
+                            free(stmt->data.for_stmt->init->data.assign);
+                        }
+                        break;
+                    case FOR_INIT_EXPR:
+                        if (stmt->data.for_stmt->init->data.expr) {
+                            free_expr_node(stmt->data.for_stmt->init->data.expr->expression);
+                            free(stmt->data.for_stmt->init->data.expr);
+                        }
+                        break;
+                    case FOR_INIT_NONE:
+                        break;
+                }
+                free(stmt->data.for_stmt->init);
             }
+
             if (stmt->data.for_stmt->condition) {
                 free_expr_node(stmt->data.for_stmt->condition);
             }
+
             if (stmt->data.for_stmt->increment) {
-                free_stmt_node(init_stmt_assign(
-                    stmt->data.for_stmt->increment->name,
-                    stmt->data.for_stmt->increment->value,
-                    stmt->line, stmt->column));
+                free(stmt->data.for_stmt->increment->name);
+                free_expr_node(stmt->data.for_stmt->increment->value);
+                free(stmt->data.for_stmt->increment);
             }
-            for (size_t i = 0; i < stmt->data.for_stmt->body_size; ++i) {
-                free_stmt_node(stmt->data.for_stmt->body[i]);
-            }
-            free(stmt->data.for_stmt->body);
+
+            free_stmt_node(stmt->data.for_stmt->block);
+            free(stmt->data.for_stmt);
             break;
         }
         case STMT_EXPR: {
             free_expr_node(stmt->data.expr_stmt->expression);
+            free(stmt->data.expr_stmt);
             break;
         }
-        case STMT_BREAK:
+        case STMT_BREAK: {
+            free(stmt->data.break_stmt);
+        }
         case STMT_CONTINUE:
             // No dynamic memory to free for these types
             break;
@@ -463,61 +476,88 @@ ast_stmt_node_t *init_stmt_continue(size_t line, size_t column) {
     return node;
 }
 
-ast_stmt_node_t *init_stmt_if(ast_expr_node_t *if_condition, ast_stmt_node_t **if_branch, size_t if_branch_size,
-                          ast_expr_node_t **elif_conditions, ast_stmt_node_t ***elif_branches, size_t elif_count,
-                          size_t *elif_branch_size, ast_stmt_node_t **else_branch, size_t else_branch_size,
-                          size_t line, size_t column) {
+ast_stmt_node_t *init_stmt_if(ast_expr_node_t *if_condition, ast_stmt_node_t *if_block, 
+                              ast_expr_node_t **elif_conditions, size_t elif_blocks_count, 
+                              ast_stmt_node_t **elif_blocks, ast_stmt_node_t *else_block,
+                              size_t line, size_t column) {
     ast_stmt_node_t *node = malloc(sizeof(ast_stmt_node_t));
     CHECK_MEM_ALLOC_ERROR(node);
     node->type = STMT_IF;
     node->data.if_stmt = malloc(sizeof(stmt_if_t));
     CHECK_MEM_ALLOC_ERROR(node->data.if_stmt);
     node->data.if_stmt->if_condition = if_condition;
-    node->data.if_stmt->if_branch = if_branch;
-    node->data.if_stmt->if_branch_size = if_branch_size;
+    node->data.if_stmt->if_block = if_block;
     node->data.if_stmt->elif_conditions = elif_conditions;
-    node->data.if_stmt->elif_branches = elif_branches;
-    node->data.if_stmt->elif_count = elif_count;
-    node->data.if_stmt->elif_branch_size = elif_branch_size;
-    node->data.if_stmt->else_branch = else_branch;
-    node->data.if_stmt->else_branch_size = else_branch_size;
+    node->data.if_stmt->elif_blocks = elif_blocks;
+    node->data.if_stmt->elif_blocks_count = elif_blocks_count;
+    node->data.if_stmt->else_block = else_block;
     node->line = line;
     node->column = column;
     return node;
 }
 
-ast_stmt_node_t *init_stmt_while(ast_expr_node_t *condition, ast_stmt_node_t **body, size_t body_size, size_t line, size_t column) {
+ast_stmt_node_t *init_stmt_while(ast_expr_node_t *condition, ast_stmt_node_t *block, size_t line, size_t column) {
     ast_stmt_node_t *node = malloc(sizeof(ast_stmt_node_t));
     CHECK_MEM_ALLOC_ERROR(node);
     node->type = STMT_WHILE;
     node->data.while_stmt = malloc(sizeof(stmt_while_t));
     CHECK_MEM_ALLOC_ERROR(node->data.while_stmt);
     node->data.while_stmt->condition = condition;
-    node->data.while_stmt->body = body;
-    node->data.while_stmt->body_size = body_size;
+    node->data.while_stmt->block = block;
     node->line = line;
     node->column = column;
     return node;
 }
 
-ast_stmt_node_t *init_stmt_for(for_init_kind_t init_kind, stmt_var_decl_t *var_decl, stmt_assign_t *assign,
-                           ast_expr_node_t *condition, stmt_assign_t *increment, ast_stmt_node_t **body,
-                           size_t body_size, size_t line, size_t column) {
+stmt_for_init_t *init_stmt_for_init_var_decl(const char *name, data_type_t type, ast_expr_node_t *expr, size_t line, size_t column) {
+    stmt_for_init_t *init = malloc(sizeof(stmt_for_init_t));
+    CHECK_MEM_ALLOC_ERROR(init);
+    init->kind = FOR_INIT_VAR_DECL;
+    init->line = line;
+    init->column = column;
+    init->data.var_decl = malloc(sizeof(stmt_var_decl_t));
+    CHECK_MEM_ALLOC_ERROR(init->data.var_decl);
+    init->data.var_decl->name = strdup(name);
+    init->data.var_decl->type = type;
+    init->data.var_decl->initializer = expr; // No initializer for var declaration in for loop
+    return init;
+}
+
+stmt_for_init_t *init_stmt_for_init_assign(const char *name, ast_expr_node_t *value, size_t line, size_t column) {
+    stmt_for_init_t *init = malloc(sizeof(stmt_for_init_t));
+    CHECK_MEM_ALLOC_ERROR(init);
+    init->kind = FOR_INIT_ASSIGN;
+    init->line = line;
+    init->column = column;
+    init->data.assign = malloc(sizeof(stmt_assign_t));
+    CHECK_MEM_ALLOC_ERROR(init->data.assign);
+    init->data.assign->name = strdup(name);
+    init->data.assign->value = value;
+    return init;
+}
+
+stmt_for_init_t *init_stmt_for_init_expr(ast_expr_node_t *expression, size_t line, size_t column) {
+    stmt_for_init_t *init = malloc(sizeof(stmt_for_init_t));
+    CHECK_MEM_ALLOC_ERROR(init);
+    init->kind = FOR_INIT_EXPR;
+    init->line = line;
+    init->column = column;
+    init->data.expr = malloc(sizeof(stmt_expr_t));
+    CHECK_MEM_ALLOC_ERROR(init->data.expr);
+    init->data.expr->expression = expression;
+    return init;
+}
+
+ast_stmt_node_t *init_stmt_for(stmt_for_init_t *init, ast_expr_node_t *condition, stmt_assign_t *increment, ast_stmt_node_t *block, size_t line, size_t column) {
     ast_stmt_node_t *node = malloc(sizeof(ast_stmt_node_t));
     CHECK_MEM_ALLOC_ERROR(node);
     node->type = STMT_FOR;
     node->data.for_stmt = malloc(sizeof(stmt_for_t));
     CHECK_MEM_ALLOC_ERROR(node->data.for_stmt);
-    node->data.for_stmt->init_kind = init_kind;
-    if (init_kind == FOR_INIT_VAR_DECL) {
-        node->data.for_stmt->init.var_decl = var_decl;
-    } else if (init_kind == FOR_INIT_ASSIGN) {
-        node->data.for_stmt->init.assign = assign;
-    }
+    node->data.for_stmt->init = init;
     node->data.for_stmt->condition = condition;
     node->data.for_stmt->increment = increment;
-    node->data.for_stmt->body = body;
-    node->data.for_stmt->body_size = body_size;
+    node->data.for_stmt->block = block;
     node->line = line;
     node->column = column;
     return node;
@@ -605,21 +645,15 @@ void print_ast(ast_t *ast) {
 void print_ast_node(ast_node_t *node, int indent_level) {
     switch (node->type) {
         case AST_NODE_CATEGORY_EXPR:
-            print_indent(indent_level);
-            printf("Expression Node:\n");
-            print_expr(node->data.expr_node, indent_level + 1);
+            print_expr(node->data.expr_node, indent_level);
             break;
 
         case AST_NODE_CATEGORY_STMT:
-            print_indent(indent_level);
-            printf("Statement Node:\n");
-            print_stmt(node->data.stmt_node, indent_level + 1);
+            print_stmt(node->data.stmt_node, indent_level);
             break;
 
         case AST_NODE_CATEGORY_DECL:
-            print_indent(indent_level);
-            printf("Declaration Node:\n");
-            print_decl(node->data.decl_node, indent_level + 1);
+            print_decl(node->data.decl_node, indent_level);
             break;
     }
 }
@@ -721,81 +755,114 @@ void print_stmt(ast_stmt_node_t *stmt, int indent) {
             print_expr(stmt->data.expr_stmt->expression, indent + 1);
             break;
 
-        case STMT_BLOCK:
-            printf("Block Statement:\n");
+        case STMT_BLOCK: {
+            printf("Block:\n");
             for (size_t i = 0; i < stmt->data.block_stmt->statement_count; ++i) {
                 print_stmt(stmt->data.block_stmt->statements[i], indent + 1);
             }
             break;
+        }
 
-        case STMT_IF:
+        case STMT_IF: {
             printf("If Statement:\n");
             print_indent(indent + 1);
             printf("If condition:\n");
             print_expr(stmt->data.if_stmt->if_condition, indent + 2);
-            print_indent(indent + 1);
-            printf("If branch:\n");
-            for (size_t i = 0; i < stmt->data.if_stmt->if_branch_size; ++i) {
-                print_stmt(stmt->data.if_stmt->if_branch[i], indent + 2);
-            }
-            for (size_t i = 0; i < stmt->data.if_stmt->elif_count; ++i) {
+            // print_indent(indent + 1);
+            // printf("If branch:\n");
+            // for (size_t i = 0; i < stmt->data.if_stmt->if_branch_size; ++i) {
+            //     print_stmt(stmt->data.if_stmt->if_branch[i], indent + 2);
+            // }
+            print_stmt(stmt->data.if_stmt->if_block, indent + 1);
+            for (size_t i = 0; i < stmt->data.if_stmt->elif_blocks_count; ++i) {
                 print_indent(indent + 1);
                 printf("Elif condition %zu:\n", i);
-                print_expr(stmt->data.if_stmt->elif_conditions[i], indent + 2);
-                for (size_t j = 0; j < stmt->data.if_stmt->elif_branch_size[i]; ++j) {
-                    print_stmt(stmt->data.if_stmt->elif_branches[i][j], indent + 2);
-                }
+                // print_expr(stmt->data.if_stmt->elif_conditions[i], indent + 2);
+                // for (size_t j = 0; j < stmt->data.if_stmt->elif_branch_size[i]; ++j) {
+                //     print_stmt(stmt->data.if_stmt->elif_branches[i][j], indent + 2);
+                // }
+                print_stmt(stmt->data.if_stmt->elif_blocks[i], indent + 1);
             }
-            if (stmt->data.if_stmt->else_branch_size > 0) {
-                print_indent(indent + 1);
-                printf("Else branch:\n");
-                for (size_t i = 0; i < stmt->data.if_stmt->else_branch_size; ++i) {
-                    print_stmt(stmt->data.if_stmt->else_branch[i], indent + 2);
-                }
+            // if (stmt->data.if_stmt->else_branch_size > 0) {
+            //     print_indent(indent + 1);
+            //     printf("Else branch:\n");
+            //     for (size_t i = 0; i < stmt->data.if_stmt->else_branch_size; ++i) {
+            //         print_stmt(stmt->data.if_stmt->else_branch[i], indent + 2);
+            //     }
+            // }
+            if (stmt->data.if_stmt->else_block != NULL) {
+                print_stmt(stmt->data.if_stmt->else_block, indent + 1);
             }
             break;
+        }
 
-        case STMT_WHILE:
+        case STMT_WHILE: {
             printf("While Statement:\n");
             print_expr(stmt->data.while_stmt->condition, indent + 1);
-            for (size_t i = 0; i < stmt->data.while_stmt->body_size; ++i) {
-                print_stmt(stmt->data.while_stmt->body[i], indent + 1);
-            }
+            print_stmt(stmt->data.while_stmt->block, indent + 1);
             break;
+        }
 
-        case STMT_FOR:
+        case STMT_FOR: {
             printf("For Statement:\n");
-            if (stmt->data.for_stmt->init_kind == FOR_INIT_VAR_DECL && stmt->data.for_stmt->init.var_decl) {
-                print_stmt(init_stmt_var_decl(
-                    stmt->data.for_stmt->init.var_decl->name,
-                    stmt->data.for_stmt->init.var_decl->type,
-                    stmt->data.for_stmt->init.var_decl->initializer,
-                    stmt->line, stmt->column), indent + 1);
-            } else if (stmt->data.for_stmt->init_kind == FOR_INIT_ASSIGN && stmt->data.for_stmt->init.assign) {
-                print_stmt(init_stmt_assign(
-                    stmt->data.for_stmt->init.assign->name,
-                    stmt->data.for_stmt->init.assign->value,
-                    stmt->line, stmt->column), indent + 1);
+            stmt_for_t *for_stmt = stmt->data.for_stmt;
+            if (for_stmt->init) {
+                print_indent(indent + 1);
+                printf("Initializer:\n");
+                switch (for_stmt->init->kind) {
+                    case FOR_INIT_VAR_DECL:
+                        if (for_stmt->init->data.var_decl) {
+                            stmt_var_decl_t *var_decl = for_stmt->init->data.var_decl;
+                            print_indent(indent + 2);
+                            printf("Variable Declaration: %s (type: %s)\n", var_decl->name, data_type_to_string(var_decl->type));
+                            if (var_decl->initializer) {
+                                print_indent(indent + 3);
+                                printf("Initializer:\n");
+                                print_expr(var_decl->initializer, indent + 4);
+                            }
+                        }
+                        break;
+                    case FOR_INIT_ASSIGN:
+                        if (for_stmt->init->data.assign) {
+                            stmt_assign_t *assign = for_stmt->init->data.assign;
+                            print_indent(indent + 2);
+                            printf("Assignment: %s =\n", assign->name);
+                            print_expr(assign->value, indent + 3);
+                        }
+                        break;
+                    case FOR_INIT_EXPR:
+                        if (for_stmt->init->data.expr) {
+                            print_indent(indent + 2);
+                            printf("Expression:\n");
+                            print_expr(for_stmt->init->data.expr->expression, indent + 3);
+                        }
+                        break;
+                    case FOR_INIT_NONE:
+                        print_indent(indent + 2);
+                        printf("No initializer\n");
+                        break;
+                }
             }
-            if (stmt->data.for_stmt->condition) {
+
+            if (for_stmt->condition) {
                 print_indent(indent + 1);
                 printf("Condition:\n");
-                print_expr(stmt->data.for_stmt->condition, indent + 2);
+                print_expr(for_stmt->condition, indent + 2);
             }
-            if (stmt->data.for_stmt->increment) {
+
+            if (for_stmt->increment) {
                 print_indent(indent + 1);
                 printf("Increment:\n");
-                print_stmt(init_stmt_assign(
-                    stmt->data.for_stmt->increment->name,
-                    stmt->data.for_stmt->increment->value,
-                    stmt->line, stmt->column), indent + 2);
+                print_indent(indent + 2);
+                printf("%s =\n", for_stmt->increment->name);
+                print_expr(for_stmt->increment->value, indent + 3);
             }
-            print_indent(indent + 1);
-            printf("Body:\n");
-            for (size_t i = 0; i < stmt->data.for_stmt->body_size; ++i) {
-                print_stmt(stmt->data.for_stmt->body[i], indent + 2);
-            }
+
+            print_stmt(stmt->data.for_stmt->block, indent + 1);
+
             break;
+        }
+
     }
 }
 

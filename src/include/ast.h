@@ -114,6 +114,43 @@ typedef struct ast_stmt_node_struct ast_stmt_node_t;
  * };
  */
 typedef struct ast_decl_node_struct ast_decl_node_t;
+
+//--------------------------------------- Declaration Node --------------------------------------------------------------------------
+typedef enum {
+    DECL_FUNCTION,
+} decl_type_t;
+
+typedef struct param_struct {
+    char *name;
+    data_type_t type;
+    size_t line;
+    size_t column;
+} param_t;
+
+typedef struct param_list_struct {
+    param_t *params;
+    size_t param_count;
+    size_t line;
+    size_t column;
+} param_list_t;
+
+typedef struct decl_function_struct {
+    char *name;
+    data_type_t return_type;
+    param_list_t *param_list;
+    ast_stmt_node_t **body;
+    size_t body_count;
+} decl_function_t;
+
+struct ast_decl_node_struct {
+    decl_type_t type;
+    union {
+        decl_function_t *function_decl;
+    } data;
+    size_t line;
+    size_t column;
+};
+
 //--------------------------------------- Expression Node ---------------------------------------------------------------------------
 
 typedef enum {
@@ -232,46 +269,49 @@ typedef struct stmt_continue_struct {
 
 typedef struct stmt_if_struct {
     ast_expr_node_t *if_condition;
-    ast_stmt_node_t **if_branch;
-    size_t if_branch_size;
+    ast_stmt_node_t *if_block;
 
     ast_expr_node_t **elif_conditions;
-    ast_stmt_node_t ***elif_branches;
-    size_t elif_count;
-    size_t *elif_branch_size;
+    size_t elif_blocks_count;
+    ast_stmt_node_t **elif_blocks;
 
-    ast_stmt_node_t **else_branch;
-    size_t else_branch_size;
+    ast_stmt_node_t *else_block;
 } stmt_if_t;
 
 typedef struct stmt_while_struct {
     ast_expr_node_t *condition;
-    ast_stmt_node_t **body;
-    size_t body_size;
+    ast_stmt_node_t *block;
 } stmt_while_t;
-
-typedef enum {
-    FOR_INIT_NONE,
-    FOR_INIT_VAR_DECL,
-    FOR_INIT_ASSIGN
-} for_init_kind_t;
-
-typedef struct stmt_for_struct {
-    for_init_kind_t init_kind;
-    union {
-        stmt_var_decl_t *var_decl;
-        stmt_assign_t *assign;
-    } init;
-    ast_expr_node_t *condition;
-    stmt_assign_t *increment;
-    ast_stmt_node_t **body;
-    size_t body_size;
-} stmt_for_t;
 
 // CHECK_THIS: why is this even needed?
 typedef struct stmt_expr_struct {
     ast_expr_node_t *expression;
 } stmt_expr_t;
+
+typedef enum {
+    FOR_INIT_NONE,
+    FOR_INIT_VAR_DECL,
+    FOR_INIT_ASSIGN,
+    FOR_INIT_EXPR
+} for_init_kind_t;
+
+typedef struct stmt_for_init_struct {
+    for_init_kind_t kind;
+    size_t line;
+    size_t column;
+    union {
+        stmt_var_decl_t *var_decl;
+        stmt_assign_t *assign;
+        stmt_expr_t *expr;
+    } data;
+} stmt_for_init_t;
+
+typedef struct stmt_for_struct {
+    stmt_for_init_t *init;
+    ast_expr_node_t *condition;
+    stmt_assign_t *increment;
+    ast_stmt_node_t *block;
+} stmt_for_t;
 
 typedef struct stmt_block_struct {
     ast_stmt_node_t **statements;
@@ -297,43 +337,6 @@ struct ast_stmt_node_struct {
     size_t line;
     size_t column;
 };
-
-//--------------------------------------- Declaration Node --------------------------------------------------------------------------
-typedef enum {
-    DECL_FUNCTION,
-} decl_type_t;
-
-typedef struct param_struct {
-    char *name;
-    data_type_t type;
-    size_t line;
-    size_t column;
-} param_t;
-
-typedef struct param_list_struct {
-    param_t *params;
-    size_t param_count;
-    size_t line;
-    size_t column;
-} param_list_t;
-
-typedef struct decl_function_struct {
-    char *name;
-    data_type_t return_type;
-    param_list_t *param_list;
-    ast_stmt_node_t **body;
-    size_t body_count;
-} decl_function_t;
-
-struct ast_decl_node_struct {
-    decl_type_t type;
-    union {
-        decl_function_t *function_decl;
-    } data;
-    size_t line;
-    size_t column;
-};
-
 
 //--------------------------------------- AST Node ----------------------------------------------------------------------------------
 struct AST_NODE_STRUCT {
@@ -385,14 +388,17 @@ ast_stmt_node_t *init_stmt_return(ast_expr_node_t *value, size_t line, size_t co
 ast_stmt_node_t *init_stmt_print(expr_arg_list_t *args, size_t line, size_t column);
 ast_stmt_node_t *init_stmt_break(size_t line, size_t column);
 ast_stmt_node_t *init_stmt_continue(size_t line, size_t column);
-ast_stmt_node_t *init_stmt_if(ast_expr_node_t *if_condition, ast_stmt_node_t **if_branch, size_t if_branch_size,
-                          ast_expr_node_t **elif_conditions, ast_stmt_node_t ***elif_branches, size_t elif_count,
-                          size_t *elif_branch_size, ast_stmt_node_t **else_branch, size_t else_branch_size,
-                          size_t line, size_t column);
-ast_stmt_node_t *init_stmt_while(ast_expr_node_t *condition, ast_stmt_node_t **body, size_t body_size, size_t line, size_t column);
-ast_stmt_node_t *init_stmt_for(for_init_kind_t init_kind, stmt_var_decl_t *var_decl, stmt_assign_t *assign,
-                           ast_expr_node_t *condition, stmt_assign_t *increment, ast_stmt_node_t **body,
-                           size_t body_size, size_t line, size_t column);
+ast_stmt_node_t *init_stmt_if(ast_expr_node_t *if_condition, ast_stmt_node_t *if_block, 
+                              ast_expr_node_t **elif_conditions, size_t elif_blocks_count, 
+                              ast_stmt_node_t **elif_blocks, ast_stmt_node_t *else_block,
+                              size_t line, size_t column);
+ast_stmt_node_t *init_stmt_while(ast_expr_node_t *condition, ast_stmt_node_t *block, size_t line, size_t column);
+
+stmt_for_init_t *init_stmt_for_init_var_decl(const char *name, data_type_t type, ast_expr_node_t *expr, size_t line, size_t column);
+stmt_for_init_t *init_stmt_for_init_assign(const char *name, ast_expr_node_t *value, size_t line, size_t column);
+stmt_for_init_t *init_stmt_for_init_expr(ast_expr_node_t *expression, size_t line, size_t column);
+ast_stmt_node_t *init_stmt_for(stmt_for_init_t *init, ast_expr_node_t *condition, stmt_assign_t *increment, ast_stmt_node_t *block, size_t line, size_t column);
+
 ast_stmt_node_t *init_stmt_expr(ast_expr_node_t *expression, size_t line, size_t column);
 ast_stmt_node_t *init_stmt_block(ast_stmt_node_t **statements, size_t statement_count, size_t line, size_t column);
 

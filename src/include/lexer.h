@@ -52,21 +52,28 @@ typedef enum {
     TOKEN_TYPE_VOID,
 
     // operators
-    TOKEN_EQ,       // =
-    TOKEN_EQEQ,      // ==
-    TOKEN_NEQ,      // !=
-    TOKEN_PLUS,     // +
-    TOKEN_MINUS,    // -
-    TOKEN_ASTERISK, // *
-    TOKEN_SLASH,    // /
-    TOKEN_GT,       // >
-    TOKEN_GEQ,      // >=
-    TOKEN_LT,       // <
-    TOKEN_LEQ,      // <=
-    TOKEN_PERCENT,  // %
-    TOKEN_AND,      // &&
-    TOKEN_OR,       // ||
-    TOKEN_NOT,      // !
+    TOKEN_EQ,           // =
+    TOKEN_EQEQ,         // ==
+    TOKEN_NEQ,          // !=
+    TOKEN_PLUS,         // +
+    TOKEN_PLUSPLUS,     // ++
+    TOKEN_PLUSEQ,       // +=
+    TOKEN_MINUS,        // -
+    TOKEN_MINUSMINUS,   // --
+    TOKEN_MINUSEQ,      // -=
+    TOKEN_ASTERISK,     // *
+    TOKEN_ASTERISKEQ,   // *=
+    TOKEN_SLASH,        // /
+    TOKEN_SLASHEQ,      // /=
+    TOKEN_GT,           // >
+    TOKEN_GEQ,          // >=
+    TOKEN_LT,           // <
+    TOKEN_LEQ,          // <=
+    TOKEN_PERCENT,      // %
+    TOKEN_PERCENT_EQ,   // %=
+    TOKEN_AND,          // &&
+    TOKEN_OR,           // ||
+    TOKEN_NOT,          // !
 
     TOKEN_LPAREN,
     TOKEN_RPAREN,

@@ -10,6 +10,9 @@ param           ::= IDENTIFIER ":" type ;
 
 var_decl        ::= IDENTIFIER ":" type "=" expression ;
 assignment      ::= IDENTIFIER "=" expression
+                 | IDENTIFIER ( "+=" | "-=" | "*=" | "/=" ) expression
+                 | IDENTIFIER ( "++" | "--" ) ;
+
 
 statement       ::= var_decl ";"
                  | assignment ";"
@@ -17,11 +20,17 @@ statement       ::= var_decl ";"
                  | "print" "(" arg_list ")" ";"
                  | "break" ";"
                  | "continue" ";"
-                 | "if" "(" expression ")" "{" { statement } "}" { "elif" "(" expression ")" "{" { statement } "}" } [ "else" "{" { statement } "}" ] 
-                 | "while" "(" expression ")" "{" { statement } "}"
-                 | "for" "(" [ var_decl | assignment ] ";" [ expression ] ";" [ assignment ] ")" "{" { statement } "}"
+                 | "if" "(" expression ")" "{" { statement } "}" 
+                    { "elif" "(" expression ")" "{" { statement } "}" } 
+                    [ "else" "{" { statement } "}" ] 
+                 | "while" "(" expression ")" block
+                 | "for" "(" [ var_decl | assignment ] ";" [ expression ] ";" [ assignment ] ")" block
                  | expression ";"
                  ;
+
+block           ::= "{" { statement } "}" ;
+
+
 
 expression      ::= logical_or ;
 
@@ -32,7 +41,10 @@ equality        ::= comparison { ( "==" | "!=" ) comparison } ;
 comparison      ::= term { ( ">" | ">=" | "<" | "<=" ) term } ;
 term            ::= factor { ( "+" | "-" ) factor } ;
 factor          ::= unary { ( "*" | "/" | "%" ) unary } ;
-unary           ::= ( "-" | "!" ) unary | primary ;
+unary           ::= ( "+" | "-" | "!" | "++" | "--" ) unary 
+                 | primary 
+                 | IDENTIFIER ( "++" | "--" )
+                 ;
 
 primary         ::= INTEGER 
                  | FLOAT 

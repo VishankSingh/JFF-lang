@@ -1,12 +1,39 @@
-var_name: int = 10;
 test_vvar : int = (a || b) && c;
 bool_var : bool = 01 && 100 && 10 || (12 == 12 >= 123) || (-a || 13);
 test : int = func_call(arg1, arg2);
 
 func test_func(param1 : int, param2 : bool) : bool {
-    
+    var = 10;
+    return ((10 || 01) && !1);
 }
 
 func main(tt : bool) : void {
+    {
+        a: int = 10;
+    }
+    it: int = 0;
+    while (it < 0) {
+        print(it);
+        it = it + 1;
+    }
+    for (it: int = 0; it <= 10; it=it+1) {
+        for (it2: int = it; it2 <= 10; it2=it2+1) {
+            print(it+it2);
+        }
+    }
+    d + + ++1;
+    if (1) {
+        var: int = 10;
+    }
+    elif (2) {
+        print (213);
+    }
     
+     else {
+        {
+            att: int = 10;
+        }
+        var: int = 13;
+    }
+    return;
 }

@@ -74,10 +74,17 @@ void print_token_type(token_type_t type) {
         case TOKEN_EQEQ:            printf("DOUBLE EQUAL  "); break;
         case TOKEN_NEQ:             printf("NOT EQUAL     "); break;
         case TOKEN_PLUS:            printf("PLUS          "); break;
+        case TOKEN_PLUSPLUS:        printf("PLUS PLUS     "); break;
+        case TOKEN_PLUSEQ:          printf("PLUS EQUAL    "); break;
         case TOKEN_MINUS:           printf("MINUS         "); break;
+        case TOKEN_MINUSMINUS:      printf("MINUS MINUS   "); break;
+        case TOKEN_MINUSEQ:        printf("MINUS EQUAL   "); break;
         case TOKEN_ASTERISK:        printf("ASTERISK      "); break;
+        case TOKEN_ASTERISKEQ:      printf("ASTERISK EQUAL "); break;
         case TOKEN_SLASH:           printf("SLASH         "); break;
+        case TOKEN_SLASHEQ:         printf("SLASH EQUAL   "); break;
         case TOKEN_PERCENT:         printf("PERCENT       "); break;
+        case TOKEN_PERCENT_EQ:      printf("PERCENT EQUAL "); break;
         case TOKEN_LT:              printf("LESS THAN     "); break;
         case TOKEN_GT:              printf("GREATER THAN  "); break;
         case TOKEN_AND:             printf("AND           "); break;
@@ -133,14 +140,21 @@ char *token_type_to_string(token_type_t type) {
         case TOKEN_EQEQ:            return "EQUAL EQUAL (==)";
         case TOKEN_NEQ:             return "NOT EQUAL (!=)";
         case TOKEN_PLUS:            return "PLUS (+)";
+        case TOKEN_PLUSPLUS:        return "PLUS PLUS (++)";
+        case TOKEN_PLUSEQ:          return "PLUS EQUAL (+=)";
         case TOKEN_MINUS:           return "MINUS (-)";
+        case TOKEN_MINUSMINUS:      return "MINUS MINUS (--)";
+        case TOKEN_MINUSEQ:         return "MINUS EQUAL (-=)";
         case TOKEN_ASTERISK:        return "ASTERISK (*)";
+        case TOKEN_ASTERISKEQ:      return "ASTERISK EQUAL (*=)";
         case TOKEN_SLASH:           return "SLASH (/)";
+        case TOKEN_SLASHEQ:         return "SLASH EQUAL (/=)";
         case TOKEN_GT:              return "GREATER THAN (>)";
         case TOKEN_GEQ:             return "GREATER EQUAL (>=)";
         case TOKEN_LT:              return "LESS THAN (<)";
         case TOKEN_LEQ:             return "LESS EQUAL (<=)";
         case TOKEN_PERCENT:         return "MODULO (%)";
+        case TOKEN_PERCENT_EQ:      return "MODULO EQUAL (%=)";
         case TOKEN_AND:             return "AND (&&)";
         case TOKEN_OR:              return "OR (||)";
         case TOKEN_NOT:             return "NOT (!)";
@@ -340,14 +354,10 @@ token_t *lexer_next_token(lexer_t *lexer) {
             return init_token(TOKEN_IDENTIFIER, lexer->input + start, length, start_line, start_column);
         }
 
-        if (isdigit(lexer->current_char) || ((lexer->current_char == '-' || lexer->current_char == '+') && isdigit(lexer_peek(lexer)))) {
+        if (isdigit(lexer->current_char)) {
             size_t start = lexer->position;
             size_t start_line = lexer->line;
             size_t start_column = lexer->column;
-
-            if (lexer->current_char == '-' || lexer->current_char == '+') {
-                lexer_advance(lexer);
-            }
 
             while (isdigit(lexer->current_char)) {
                 lexer_advance(lexer);
@@ -355,6 +365,7 @@ token_t *lexer_next_token(lexer_t *lexer) {
             size_t length = lexer->position - start;
             return init_token(TOKEN_LITERAL_INT, lexer->input + start, length, start_line, start_column);
         }
+
 
         if (lexer->current_char == '"') {
             lexer_advance(lexer);
@@ -399,6 +410,7 @@ token_t *lexer_next_token(lexer_t *lexer) {
             lexer_advance(lexer);
             return init_token(TOKEN_OR, "||", 2, start_line, start_column);
         } else if (ch == '!' && lexer_peek(lexer) != '=') {
+            lexer_advance(lexer);
             return init_token(TOKEN_NOT, "!", 1, start_line, start_column);
         } else if (ch == '<' && lexer_peek(lexer) == '=') {
             lexer_advance(lexer);
@@ -408,7 +420,39 @@ token_t *lexer_next_token(lexer_t *lexer) {
             lexer_advance(lexer);
             lexer_advance(lexer);
             return init_token(TOKEN_GEQ, ">=", 2, start_line, start_column);
+        } 
+        // TODO: add parsing support for below
+        else if (ch == '+' && lexer_peek(lexer) == '+') {
+            lexer_advance(lexer);
+            lexer_advance(lexer);
+            return init_token(TOKEN_PLUSPLUS, "++", 2, start_line, start_column);
+        } else if (ch == '-' && lexer_peek(lexer) == '-') {
+            lexer_advance(lexer);
+            lexer_advance(lexer);
+            return init_token(TOKEN_MINUSMINUS, "--", 2, start_line, start_column);
+        } else if (ch == '+' && lexer_peek(lexer) == '=') {
+            lexer_advance(lexer);
+            lexer_advance(lexer);
+            return init_token(TOKEN_PLUSEQ, "+=", 2, start_line, start_column);
+        } else if (ch == '-' && lexer_peek(lexer) == '=') {
+            lexer_advance(lexer);
+            lexer_advance(lexer);
+            return init_token(TOKEN_MINUSEQ, "-=", 2, start_line, start_column);
+        } else if (ch == '*' && lexer_peek(lexer) == '=') {
+            lexer_advance(lexer);
+            lexer_advance(lexer);
+            return init_token(TOKEN_ASTERISKEQ, "*=", 2, start_line, start_column);
+        } else if (ch == '/' && lexer_peek(lexer) == '=') {
+            lexer_advance(lexer);
+            lexer_advance(lexer);
+            return init_token(TOKEN_SLASHEQ, "/=", 2, start_line, start_column);
+        } else if (ch == '%' && lexer_peek(lexer) == '=') {
+            lexer_advance(lexer);
+            lexer_advance(lexer);
+            return init_token(TOKEN_PERCENT_EQ, "%=", 2, start_line, start_column);
         }
+
+         // Handle single-char tokens
 
         lexer_advance(lexer);
         switch (ch) {
